@@ -237,7 +237,7 @@ class LocalLLM:
                 )
                 model = AutoModelForCausalLM.from_pretrained(
                     self._transformers_model_id,
-                    torch_dtype=torch.float32,
+                    dtype=torch.float32,
                     device_map=device if device != "cpu" else None,
                     trust_remote_code=True,
                 )
