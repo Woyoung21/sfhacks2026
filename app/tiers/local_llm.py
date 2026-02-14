@@ -134,8 +134,15 @@ class LocalLLM:
         self._transformers_model_id = TRANSFORMERS_MODEL
 
         # Generation defaults
-        self._max_tokens = max_tokens or int(os.getenv("LOCAL_MAX_TOKENS", "256"))
+        self._max_tokens = max_tokens or int(os.getenv("LOCAL_MAX_TOKENS", "512"))
         self._temperature = temperature or float(os.getenv("LOCAL_TEMPERATURE", "0.7"))
+
+        # System prompt — keeps Tier 2 responses concise and energy-efficient
+        self._system_prompt = (
+            "You are a helpful assistant. Give clear, concise answers. "
+            "Avoid unnecessary formatting like headers, horizontal rules, or long lists. "
+            "Get straight to the point."
+        )
         self._device = device or os.getenv("LOCAL_DEVICE", "auto")
 
         # Internal state
@@ -304,8 +311,11 @@ class LocalLLM:
         start = time.perf_counter()
 
         def _run():
-            # Format as chat for Qwen3 instruct models
-            messages = [{"role": "user", "content": prompt}]
+            # Format as chat with system prompt for concise Tier 2 responses
+            messages = [
+                {"role": "system", "content": self._system_prompt},
+                {"role": "user", "content": prompt},
+            ]
 
             # Try chat template first, fall back to raw prompt
             try:
@@ -411,7 +421,10 @@ class LocalLLM:
             from transformers import TextIteratorStreamer
             import threading
 
-            messages = [{"role": "user", "content": prompt}]
+            messages = [
+                {"role": "system", "content": self._system_prompt},
+                {"role": "user", "content": prompt},
+            ]
             try:
                 text_input = self._tokenizer.apply_chat_template(
                     messages,
