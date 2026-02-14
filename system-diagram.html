@@ -1,0 +1,792 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Hybrid AI Routing Architecture — System Diagram</title>
+<style>
+  :root {
+    --bg: #0f1117;
+    --surface: #181a20;
+    --surface2: #22252e;
+    --border: #2d3040;
+    --text: #e4e6f0;
+    --text-muted: #8b8fa3;
+    --green: #34d399;
+    --green-dim: #10b981;
+    --green-glow: rgba(52,211,153,.25);
+    --blue: #60a5fa;
+    --blue-dim: #3b82f6;
+    --blue-glow: rgba(96,165,250,.2);
+    --orange: #fbbf24;
+    --orange-dim: #f59e0b;
+    --orange-glow: rgba(251,191,36,.2);
+    --red: #f87171;
+    --red-glow: rgba(248,113,113,.18);
+    --purple: #a78bfa;
+    --purple-glow: rgba(167,139,250,.2);
+    --cyan: #22d3ee;
+    --cyan-glow: rgba(34,211,238,.18);
+  }
+
+  * { margin:0; padding:0; box-sizing:border-box; }
+
+  body {
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* ─── Header ─── */
+  header {
+    text-align: center;
+    padding: 36px 20px 12px;
+  }
+  header h1 {
+    font-size: 1.75rem;
+    letter-spacing: .04em;
+    background: linear-gradient(135deg, var(--green), var(--blue));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    font-weight: 700;
+  }
+  header p {
+    color: var(--text-muted);
+    font-size: .92rem;
+    margin-top: 6px;
+    max-width: 680px;
+    margin-inline: auto;
+    line-height: 1.55;
+  }
+
+  /* ─── Canvas area ─── */
+  .diagram-wrap {
+    position: relative;
+    width: 100%;
+    max-width: 1260px;
+    margin: 28px auto 48px;
+    padding: 0 24px;
+  }
+
+  svg.connections {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .grid {
+    position: relative;
+    display: grid;
+    grid-template-columns: 240px 1fr 260px;
+    grid-template-rows: auto auto auto auto auto;
+    gap: 20px 28px;
+    z-index: 1;
+  }
+
+  /* ─── Card base ─── */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 22px 20px;
+    position: relative;
+    transition: transform .22s, box-shadow .22s, border-color .3s;
+  }
+  .card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 32px rgba(0,0,0,.35);
+  }
+  .card-label {
+    display: inline-block;
+    font-size: .65rem;
+    letter-spacing: .09em;
+    text-transform: uppercase;
+    font-weight: 700;
+    padding: 3px 10px;
+    border-radius: 6px;
+    margin-bottom: 10px;
+  }
+  .card h3 {
+    font-size: 1.05rem;
+    font-weight: 600;
+    margin-bottom: 6px;
+  }
+  .card p, .card li {
+    font-size: .82rem;
+    color: var(--text-muted);
+    line-height: 1.55;
+  }
+  .card ul { list-style: none; padding: 0; }
+  .card ul li::before {
+    content: '›';
+    color: var(--green);
+    font-weight: 700;
+    margin-right: 6px;
+  }
+
+  /* ─── Colour accents ─── */
+  .card.green  { border-color: var(--green-dim); }
+  .card.green:hover  { box-shadow: 0 0 28px var(--green-glow); }
+  .card.green  .card-label { background: rgba(16,185,129,.15); color: var(--green); }
+
+  .card.blue   { border-color: var(--blue-dim); }
+  .card.blue:hover   { box-shadow: 0 0 28px var(--blue-glow); }
+  .card.blue   .card-label { background: rgba(59,130,246,.15); color: var(--blue); }
+
+  .card.orange { border-color: var(--orange-dim); }
+  .card.orange:hover { box-shadow: 0 0 28px var(--orange-glow); }
+  .card.orange .card-label { background: rgba(245,158,11,.13); color: var(--orange); }
+
+  .card.red    { border-color: var(--red); }
+  .card.red:hover    { box-shadow: 0 0 28px var(--red-glow); }
+  .card.red    .card-label { background: rgba(248,113,113,.13); color: var(--red); }
+
+  .card.purple { border-color: #7c3aed; }
+  .card.purple:hover { box-shadow: 0 0 28px var(--purple-glow); }
+  .card.purple .card-label { background: rgba(124,58,237,.13); color: var(--purple); }
+
+  .card.cyan   { border-color: var(--cyan); }
+  .card.cyan:hover   { box-shadow: 0 0 28px var(--cyan-glow); }
+  .card.cyan   .card-label { background: rgba(34,211,238,.12); color: var(--cyan); }
+
+  /* ─── Specific grid placement ─── */
+  .user-interface   { grid-column: 1; grid-row: 1 / 3; }
+  .router           { grid-column: 2; grid-row: 1 / 3; min-height: 200px; }
+  .metrics          { grid-column: 3; grid-row: 1 / 4; }
+  .tier-search      { grid-column: 1; grid-row: 3; }
+  .tier-local       { grid-column: 2; grid-row: 3; }
+  .tier-frontier    { grid-column: 3; grid-row: 4; }
+  .carbon-signal    { grid-column: 2; grid-row: 2; justify-self: end; max-width: 260px; }
+  .feedback         { grid-column: 1; grid-row: 4; }
+  .admin            { grid-column: 2; grid-row: 4; }
+
+  /* ─── Router special styling ─── */
+  .router {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    background: radial-gradient(ellipse at center, rgba(52,211,153,.06) 0%, var(--surface) 70%);
+  }
+  .router-ring {
+    width: 110px; height: 110px;
+    border-radius: 50%;
+    border: 3px solid var(--green-dim);
+    display: flex; align-items: center; justify-content: center;
+    position: relative;
+    margin-bottom: 14px;
+    animation: pulse-ring 3s ease-in-out infinite;
+  }
+  @keyframes pulse-ring {
+    0%,100% { box-shadow: 0 0 0 0 var(--green-glow); }
+    50%     { box-shadow: 0 0 0 14px transparent; }
+  }
+  .router-ring svg { width: 46px; height: 46px; }
+  .router h3 { font-size: 1.15rem; }
+
+  /* ─── Tier badges ─── */
+  .tier-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: .72rem;
+    font-weight: 700;
+    letter-spacing: .06em;
+    padding: 4px 12px;
+    border-radius: 8px;
+    margin-bottom: 10px;
+  }
+  .tier-badge.t1 { background: rgba(59,130,246,.14); color: var(--blue); }
+  .tier-badge.t2 { background: rgba(245,158,11,.12); color: var(--orange); }
+  .tier-badge.t3 { background: rgba(248,113,113,.12); color: var(--red); }
+
+  .tier-icon {
+    width: 36px; height: 36px;
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.1rem;
+    margin-bottom: 8px;
+  }
+
+  /* ─── Energy bar ─── */
+  .energy-bar {
+    margin-top: 10px;
+    height: 6px;
+    border-radius: 3px;
+    background: var(--surface2);
+    overflow: hidden;
+  }
+  .energy-bar .fill {
+    height: 100%;
+    border-radius: 3px;
+    transition: width .6s;
+  }
+  .energy-label {
+    display: flex;
+    justify-content: space-between;
+    font-size: .68rem;
+    color: var(--text-muted);
+    margin-top: 4px;
+  }
+
+  /* ─── Arrows / connector labels ─── */
+  .arrow-label {
+    font-size: .62rem;
+    font-weight: 600;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    fill: var(--text-muted);
+  }
+
+  /* ─── Flow lines (SVG) ─── */
+  .flow-line {
+    stroke-width: 2;
+    fill: none;
+    stroke-dasharray: 8 4;
+    animation: dash-flow 1.2s linear infinite;
+  }
+  @keyframes dash-flow {
+    to { stroke-dashoffset: -12; }
+  }
+
+  /* ─── Responsive ─── */
+  @media (max-width: 960px) {
+    .grid {
+      grid-template-columns: 1fr 1fr;
+      grid-template-rows: auto;
+    }
+    .user-interface, .router, .metrics, .tier-search,
+    .tier-local, .tier-frontier, .carbon-signal,
+    .feedback, .admin {
+      grid-column: auto;
+      grid-row: auto;
+    }
+    .carbon-signal { max-width: none; justify-self: stretch; }
+  }
+  @media (max-width: 600px) {
+    .grid { grid-template-columns: 1fr; }
+  }
+
+  /* ─── Legend ─── */
+  .legend {
+    max-width: 1260px;
+    margin: 0 auto 48px;
+    padding: 0 24px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px;
+    justify-content: center;
+  }
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: .78rem;
+    color: var(--text-muted);
+  }
+  .legend-dot {
+    width: 10px; height: 10px;
+    border-radius: 50%;
+  }
+
+  /* ─── Stat pill ─── */
+  .stat-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--surface2);
+    border-radius: 8px;
+    padding: 6px 12px;
+    margin: 4px 2px;
+    font-size: .76rem;
+  }
+  .stat-pill .dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+  }
+
+  /* ─── Routing reason tag ─── */
+  .reason-tag {
+    display: inline-block;
+    background: rgba(52,211,153,.1);
+    color: var(--green);
+    font-size: .7rem;
+    padding: 3px 10px;
+    border-radius: 6px;
+    margin-top: 8px;
+    font-weight: 600;
+  }
+
+  /* ─── Condition chips ─── */
+  .conditions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 10px;
+  }
+  .chip {
+    font-size: .68rem;
+    padding: 3px 10px;
+    border-radius: 6px;
+    font-weight: 600;
+    background: var(--surface2);
+    color: var(--text-muted);
+    border: 1px solid var(--border);
+  }
+  .chip.green  { border-color: var(--green-dim); color: var(--green); background: rgba(16,185,129,.08); }
+  .chip.orange { border-color: var(--orange-dim); color: var(--orange); background: rgba(245,158,11,.08); }
+  .chip.red    { border-color: #ef4444; color: var(--red); background: rgba(248,113,113,.08); }
+
+  /* ─── Escalation arrow ─── */
+  .escalation {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 12px;
+    padding: 8px 12px;
+    border-radius: 8px;
+    background: rgba(251,191,36,.06);
+    border: 1px dashed var(--orange-dim);
+    font-size: .74rem;
+    color: var(--orange);
+    font-weight: 600;
+  }
+  .escalation svg { flex-shrink: 0; }
+
+  /* ─── Mode switch pill ─── */
+  .mode-switch {
+    display: flex;
+    border-radius: 10px;
+    overflow: hidden;
+    border: 1px solid var(--border);
+    margin: 10px 0;
+  }
+  .mode-switch span {
+    flex: 1;
+    text-align: center;
+    padding: 7px 0;
+    font-size: .74rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background .2s, color .2s;
+  }
+  .mode-switch .eco {
+    background: rgba(16,185,129,.18);
+    color: var(--green);
+  }
+  .mode-switch .perf {
+    background: var(--surface2);
+    color: var(--text-muted);
+  }
+
+  /* ─── Subheading ─── */
+  .section-sub {
+    font-size: .72rem;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: .07em;
+    font-weight: 700;
+    margin: 14px 0 6px;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>⚡ HYBRID AI ROUTING ARCHITECTURE</h1>
+  <p>Intelligent 3-tier query routing that balances response quality with energy efficiency.
+     Routes each query to <strong>Search</strong>, a <strong>Local LLM</strong>, or a <strong>Frontier LLM</strong>
+     based on complexity, real-time California grid carbon intensity, and selected mode.</p>
+</header>
+
+<!-- ─── LEGEND ─── -->
+<div class="legend">
+  <div class="legend-item"><div class="legend-dot" style="background:var(--blue)"></div> Tier 1 — Search</div>
+  <div class="legend-item"><div class="legend-dot" style="background:var(--orange)"></div> Tier 2 — Local LLM</div>
+  <div class="legend-item"><div class="legend-dot" style="background:var(--red)"></div> Tier 3 — Frontier LLM</div>
+  <div class="legend-item"><div class="legend-dot" style="background:var(--green)"></div> Router / Eco Signal</div>
+  <div class="legend-item"><div class="legend-dot" style="background:var(--purple)"></div> Metrics & Logging</div>
+  <div class="legend-item"><div class="legend-dot" style="background:var(--cyan)"></div> Carbon Signal</div>
+</div>
+
+<!-- ─── DIAGRAM ─── -->
+<div class="diagram-wrap">
+  <div class="grid">
+
+    <!-- ──────────── USER INTERFACE ──────────── -->
+    <div class="card green user-interface">
+      <span class="card-label">Input</span>
+      <h3>🧑‍💻 User Interface</h3>
+      <p>Chat-style query input with mode selection &amp; feedback controls.</p>
+
+      <div class="section-sub">Mode Selector</div>
+      <div class="mode-switch">
+        <span class="eco">🌱 Eco</span>
+        <span class="perf">🚀 Perf</span>
+      </div>
+      <p style="font-size:.72rem;margin-top:4px;">Eco mode raises local-routing threshold &amp; penalises frontier calls during dirty grid hours.</p>
+
+      <div class="section-sub">User Feedback</div>
+      <ul>
+        <li>👍 / 👎 per response</li>
+        <li>Feeds adaptive threshold tuning</li>
+        <li>Session satisfaction score</li>
+      </ul>
+
+      <div class="section-sub">Visible Routing Reason</div>
+      <div class="reason-tag">💡 "Processed locally to save CO₂"</div>
+    </div>
+
+    <!-- ──────────── INTELLIGENT ROUTER ──────────── -->
+    <div class="card green router">
+      <div class="router-ring">
+        <svg viewBox="0 0 24 24" fill="none" stroke="var(--green)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="3"/>
+          <path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83"/>
+        </svg>
+      </div>
+      <h3>Intelligent Router</h3>
+      <p>Classifies each query by <strong>complexity</strong> (simple/factual → medium → high) and cross-references the current <strong>carbon signal</strong> and <strong>mode</strong>.</p>
+
+      <div class="conditions">
+        <span class="chip green">Simple / Factual → Search</span>
+        <span class="chip orange">Medium + Clean Grid → Local LLM</span>
+        <span class="chip red">High Complexity OR Dirty Grid → Frontier</span>
+      </div>
+
+      <div class="escalation">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 19V5M5 12l7-7 7 7"/></svg>
+        Auto-escalation when lower-tier response is insufficient
+      </div>
+    </div>
+
+    <!-- ──────────── CARBON SIGNAL ──────────── -->
+    <div class="card cyan carbon-signal" style="grid-column:2;grid-row:2;justify-self:end;">
+      <span class="card-label">Signal</span>
+      <h3>🌍 CA Grid Carbon Intensity</h3>
+      <p>Real-time feed (e.g. WattTime / electricityMap) of California's marginal grid emissions.</p>
+      <div class="energy-bar" style="margin-top:12px;">
+        <div class="fill" style="width:35%; background: linear-gradient(90deg, var(--green), var(--orange));"></div>
+      </div>
+      <div class="energy-label"><span>🟢 Clean</span><span>🟠 Med</span><span>🔴 Dirty</span></div>
+      <p style="margin-top:8px;font-size:.72rem;">When the grid is <strong>dirty</strong>, the router penalises frontier calls and prefers local inference or search to minimise marginal carbon.</p>
+    </div>
+
+    <!-- ──────────── TIER 1: SEARCH ──────────── -->
+    <div class="card blue tier-search">
+      <div class="tier-badge t1">TIER 1</div>
+      <h3>🔍 Search</h3>
+      <p><strong>Traditional indexed search</strong> (Google, Bing, SearXNG)</p>
+      <ul>
+        <li>Fact-checking &amp; current events</li>
+        <li>Simple factual queries</li>
+        <li>Lowest energy cost (~1×)</li>
+      </ul>
+      <div class="energy-bar">
+        <div class="fill" style="width:14%; background:var(--blue);"></div>
+      </div>
+      <div class="energy-label"><span>~1× energy</span><span>Fastest</span></div>
+    </div>
+
+    <!-- ──────────── TIER 2: LOCAL LLM ──────────── -->
+    <div class="card orange tier-local">
+      <div class="tier-badge t2">TIER 2</div>
+      <h3>🧠 Local LLM — Ollama</h3>
+      <p><strong>Llama 3 / Mistral</strong> running on-device via Ollama.</p>
+      <ul>
+        <li>Summarisation &amp; basic code</li>
+        <li>Medium complexity queries</li>
+        <li>No API cost; moderate energy (~3×)</li>
+      </ul>
+      <div class="energy-bar">
+        <div class="fill" style="width:42%; background:var(--orange);"></div>
+      </div>
+      <div class="energy-label"><span>~3× energy</span><span>Local inference</span></div>
+
+      <div class="section-sub" style="margin-top:12px;">Adaptive Threshold Tuning</div>
+      <p style="font-size:.72rem;">Session satisfaction (👍/👎) adjusts the complexity boundary between Tier 2 ↔ Tier 3 <em>(bounded)</em>.</p>
+    </div>
+
+    <!-- ──────────── FEEDBACK / THRESHOLD ──────────── -->
+    <div class="card green feedback" style="border-color:#059669;">
+      <span class="card-label">Feedback Loop</span>
+      <h3>🔄 Adaptive Thresholds</h3>
+      <p>Per-session satisfaction score drives bounded threshold tuning.</p>
+      <ul>
+        <li>👍 reinforces current tier choice</li>
+        <li>👎 on local → lowers escalation bar</li>
+        <li>👎 on frontier → raises local ceiling</li>
+        <li>Bounded: thresholds never exceed org defaults</li>
+      </ul>
+    </div>
+
+    <!-- ──────────── ADMIN ──────────── -->
+    <div class="card purple admin">
+      <span class="card-label">Admin</span>
+      <h3>⚙️ Admin Dashboard</h3>
+      <p>Organisation-level routing controls and defaults.</p>
+      <ul>
+        <li>Default mode (Eco / Performance)</li>
+        <li>Frontier call budget &amp; limits</li>
+        <li>Carbon penalty multiplier</li>
+        <li>Threshold bounds (min / max)</li>
+        <li>Per-user &amp; team overrides</li>
+        <li>Energy / cost proxy dashboard</li>
+      </ul>
+    </div>
+
+    <!-- ──────────── TIER 3: FRONTIER ──────────── -->
+    <div class="card red tier-frontier">
+      <div class="tier-badge t3">TIER 3</div>
+      <h3>☁️ Frontier LLM</h3>
+      <p><strong>GPT-4o / Claude 3.5</strong> — cloud-hosted frontier models.</p>
+      <ul>
+        <li>Complex reasoning &amp; creative tasks</li>
+        <li>Fallback when lower tiers fail</li>
+        <li>Highest energy &amp; cost (~7-8×)</li>
+      </ul>
+      <div class="energy-bar">
+        <div class="fill" style="width:100%; background: linear-gradient(90deg, var(--orange), var(--red));"></div>
+      </div>
+      <div class="energy-label"><span>~7-8× energy</span><span>Cloud API</span></div>
+    </div>
+
+    <!-- ──────────── LIVE METRICS ──────────── -->
+    <div class="card purple metrics">
+      <span class="card-label">Observability</span>
+      <h3>📊 Live Metrics &amp; Logging</h3>
+      <p>Real-time dashboard tracking every routed request.</p>
+
+      <div class="section-sub">Key Metrics</div>
+      <div style="display:flex;flex-wrap:wrap;gap:4px;">
+        <span class="stat-pill"><span class="dot" style="background:var(--red)"></span> Frontier Calls</span>
+        <span class="stat-pill"><span class="dot" style="background:var(--green)"></span> Avoided Calls</span>
+        <span class="stat-pill"><span class="dot" style="background:var(--orange)"></span> Local Calls</span>
+        <span class="stat-pill"><span class="dot" style="background:var(--blue)"></span> Search Calls</span>
+      </div>
+
+      <div class="section-sub">Energy / Cost Proxy</div>
+      <div class="energy-bar">
+        <div class="fill" style="width:28%; background: linear-gradient(90deg, var(--green), var(--blue));"></div>
+      </div>
+      <div class="energy-label"><span>Session total</span><span>28% of max</span></div>
+
+      <div class="section-sub">Per-Request Log</div>
+      <ul>
+        <li>Query → Tier routed</li>
+        <li>Routing reason (visible)</li>
+        <li>Latency &amp; token count</li>
+        <li>Carbon intensity at request time</li>
+        <li>User feedback (if given)</li>
+        <li>Escalation events</li>
+      </ul>
+    </div>
+
+  </div><!-- /.grid -->
+
+  <!-- ─── SVG FLOW CONNECTORS ─── -->
+  <svg class="connections" id="connectorSvg" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <marker id="arrow-green" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+        <path d="M0,0 L8,3 L0,6" fill="var(--green)"/>
+      </marker>
+      <marker id="arrow-blue" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+        <path d="M0,0 L8,3 L0,6" fill="var(--blue)"/>
+      </marker>
+      <marker id="arrow-orange" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+        <path d="M0,0 L8,3 L0,6" fill="var(--orange)"/>
+      </marker>
+      <marker id="arrow-red" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+        <path d="M0,0 L8,3 L0,6" fill="var(--red)"/>
+      </marker>
+      <marker id="arrow-purple" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+        <path d="M0,0 L8,3 L0,6" fill="var(--purple)"/>
+      </marker>
+      <marker id="arrow-cyan" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+        <path d="M0,0 L8,3 L0,6" fill="var(--cyan)"/>
+      </marker>
+    </defs>
+  </svg>
+
+</div><!-- /.diagram-wrap -->
+
+<!-- ─── FLOW SUMMARY ─── -->
+<section style="max-width:1260px;margin:0 auto 60px;padding:0 24px;">
+  <div class="card" style="border-color:var(--border);background:var(--surface2);">
+    <h3 style="text-align:center;margin-bottom:14px;">🔁 End-to-End Request Flow</h3>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;text-align:center;">
+      <div>
+        <div style="font-size:1.5rem;">1️⃣</div>
+        <p style="font-size:.82rem;color:var(--text-muted);"><strong style="color:var(--text);">User Query</strong><br/>User types query &amp; selects Eco/Perf mode</p>
+      </div>
+      <div>
+        <div style="font-size:1.5rem;">2️⃣</div>
+        <p style="font-size:.82rem;color:var(--text-muted);"><strong style="color:var(--text);">Classify</strong><br/>Router scores complexity + checks grid carbon</p>
+      </div>
+      <div>
+        <div style="font-size:1.5rem;">3️⃣</div>
+        <p style="font-size:.82rem;color:var(--text-muted);"><strong style="color:var(--text);">Route</strong><br/>Dispatch to Search, Local LLM, or Frontier</p>
+      </div>
+      <div>
+        <div style="font-size:1.5rem;">4️⃣</div>
+        <p style="font-size:.82rem;color:var(--text-muted);"><strong style="color:var(--text);">Respond + Log</strong><br/>Return answer with routing reason &amp; log metrics</p>
+      </div>
+      <div>
+        <div style="font-size:1.5rem;">5️⃣</div>
+        <p style="font-size:.82rem;color:var(--text-muted);"><strong style="color:var(--text);">Feedback</strong><br/>User 👍/👎 → adaptive threshold update</p>
+      </div>
+      <div>
+        <div style="font-size:1.5rem;">🔄</div>
+        <p style="font-size:.82rem;color:var(--text-muted);"><strong style="color:var(--text);">Escalate?</strong><br/>If lower tier insufficient → auto-escalate to next tier</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ─── ENERGY COMPARISON ─── -->
+<section style="max-width:1260px;margin:0 auto 60px;padding:0 24px;">
+  <div class="card" style="border-color:var(--border);background:var(--surface2);">
+    <h3 style="text-align:center;margin-bottom:18px;">⚡ Energy Cost Comparison per Request</h3>
+    <div style="display:flex;flex-direction:column;gap:14px;max-width:600px;margin:0 auto;">
+      <!-- Search -->
+      <div>
+        <div style="display:flex;justify-content:space-between;font-size:.82rem;margin-bottom:4px;">
+          <span>🔍 <strong>Search</strong></span><span style="color:var(--blue);">~1×</span>
+        </div>
+        <div class="energy-bar"><div class="fill" style="width:13%;background:var(--blue);"></div></div>
+      </div>
+      <!-- Local -->
+      <div>
+        <div style="display:flex;justify-content:space-between;font-size:.82rem;margin-bottom:4px;">
+          <span>🧠 <strong>Local LLM (Ollama)</strong></span><span style="color:var(--orange);">~3×</span>
+        </div>
+        <div class="energy-bar"><div class="fill" style="width:40%;background:var(--orange);"></div></div>
+      </div>
+      <!-- Frontier -->
+      <div>
+        <div style="display:flex;justify-content:space-between;font-size:.82rem;margin-bottom:4px;">
+          <span>☁️ <strong>Frontier LLM</strong></span><span style="color:var(--red);">~7-8×</span>
+        </div>
+        <div class="energy-bar"><div class="fill" style="width:100%;background:linear-gradient(90deg,var(--orange),var(--red));"></div></div>
+      </div>
+    </div>
+    <p style="text-align:center;font-size:.74rem;color:var(--text-muted);margin-top:14px;">LLM queries consume <strong style="color:var(--text);">7–8× more energy</strong> than a traditional indexed search. Our system defaults to lighter options when possible.</p>
+  </div>
+</section>
+
+<script>
+// ─── Draw animated connector lines between cards ───
+function drawConnectors() {
+  const svg = document.getElementById('connectorSvg');
+  if (!svg) return;
+  const wrap = document.querySelector('.diagram-wrap');
+  const wrapRect = wrap.getBoundingClientRect();
+
+  // Clear existing
+  svg.querySelectorAll('.dynamic-line').forEach(l => l.remove());
+
+  function getCenter(el) {
+    const r = el.getBoundingClientRect();
+    return {
+      x: r.left + r.width / 2 - wrapRect.left,
+      y: r.top + r.height / 2 - wrapRect.top,
+      top: r.top - wrapRect.top,
+      bottom: r.bottom - wrapRect.top,
+      left: r.left - wrapRect.left,
+      right: r.right - wrapRect.left,
+      w: r.width,
+      h: r.height
+    };
+  }
+
+  const ui      = document.querySelector('.user-interface');
+  const router  = document.querySelector('.router');
+  const search  = document.querySelector('.tier-search');
+  const local   = document.querySelector('.tier-local');
+  const frontier= document.querySelector('.tier-frontier');
+  const metrics = document.querySelector('.metrics');
+  const carbon  = document.querySelector('.carbon-signal');
+  const feedback= document.querySelector('.feedback');
+  const admin   = document.querySelector('.admin');
+
+  if (!ui || !router) return;
+
+  function line(from, to, color, markerEnd) {
+    const l = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+    l.setAttribute('x1', from.x); l.setAttribute('y1', from.y);
+    l.setAttribute('x2', to.x);   l.setAttribute('y2', to.y);
+    l.setAttribute('class', 'flow-line dynamic-line');
+    l.setAttribute('stroke', `var(--${color})`);
+    if (markerEnd) l.setAttribute('marker-end', `url(#arrow-${color})`);
+    svg.appendChild(l);
+  }
+
+  const uiC = getCenter(ui);
+  const rC  = getCenter(router);
+  const sC  = getCenter(search);
+  const lC  = getCenter(local);
+  const fC  = getCenter(frontier);
+  const mC  = getCenter(metrics);
+
+  // UI → Router
+  line({x: uiC.right, y: uiC.y}, {x: rC.left, y: rC.y}, 'green', true);
+
+  // Router → Search
+  line({x: rC.x - rC.w * .3, y: rC.bottom}, {x: sC.x, y: sC.top}, 'blue', true);
+
+  // Router → Local
+  line({x: rC.x, y: rC.bottom}, {x: lC.x, y: lC.top}, 'orange', true);
+
+  // Router → Frontier
+  line({x: rC.x + rC.w * .3, y: rC.bottom}, {x: fC.x, y: fC.top}, 'red', true);
+
+  // Router → Metrics
+  line({x: rC.right, y: rC.y - 20}, {x: mC.left, y: mC.y}, 'purple', true);
+
+  // Carbon → Router
+  if (carbon) {
+    const cC = getCenter(carbon);
+    line({x: cC.left, y: cC.y}, {x: rC.right - 20, y: rC.bottom - 20}, 'cyan', true);
+  }
+
+  // Feedback → Router
+  if (feedback) {
+    const fbC = getCenter(feedback);
+    line({x: fbC.x, y: fbC.top}, {x: rC.x - rC.w * .35, y: rC.bottom + 4}, 'green', true);
+  }
+
+  // Admin → Router
+  if (admin) {
+    const adC = getCenter(admin);
+    line({x: adC.x, y: adC.top}, {x: rC.x, y: rC.bottom + 4}, 'purple', true);
+  }
+
+  // Set svg size
+  svg.setAttribute('width', wrap.scrollWidth);
+  svg.setAttribute('height', wrap.scrollHeight);
+}
+
+window.addEventListener('load', () => { setTimeout(drawConnectors, 100); });
+window.addEventListener('resize', drawConnectors);
+
+// ─── Mode toggle interactivity ───
+document.querySelector('.mode-switch')?.addEventListener('click', function(e) {
+  const eco = this.querySelector('.eco');
+  const perf = this.querySelector('.perf');
+  if (e.target === eco || e.target === perf) {
+    const isEco = e.target === eco;
+    eco.style.background  = isEco ? 'rgba(16,185,129,.18)' : 'var(--surface2)';
+    eco.style.color       = isEco ? 'var(--green)' : 'var(--text-muted)';
+    perf.style.background = isEco ? 'var(--surface2)' : 'rgba(96,165,250,.18)';
+    perf.style.color      = isEco ? 'var(--text-muted)' : 'var(--blue)';
+  }
+});
+</script>
+</body>
+</html>
