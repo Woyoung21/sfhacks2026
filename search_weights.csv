@@ -1,0 +1,56 @@
+keyword,weight
+hours,0.9
+open,0.9
+close,0.9
+near me,0.9
+address,0.9
+phone number,0.9
+directions,0.9
+menu,0.9
+reservation,0.9
+price,0.9
+cost,0.9
+ticket,0.9
+flight,0.9
+hotel,0.9
+deal,0.9
+population,0.9
+gdp,0.9
+statistics,0.9
+rate,0.9
+percentage,0.9
+ranking,0.9
+ceo,0.9
+founder,0.9
+cast,0.9
+age,0.9
+birthday,0.9
+net worth,0.9
+map,0.9
+distance,0.9
+route,0.9
+traffic,0.9
+score,0.9
+result,0.9
+standing,0.9
+schedule,0.9
+today,0.9
+right now,0.9
+current,0.9
+latest,0.9
+news,0.9
+update,0.9
+who,0.7
+what,0.7
+where,0.7
+when,0.7
+which,0.7
+how many,0.7
+how much,0.7
+how far,0.7
+how long,0.7
+how tall,0.7
+how big,0.7
+how old,0.7
+why,0.4
+how,0.4
