@@ -1,5 +1,5 @@
 # set up python env
 
 ```
-.venv\Scripts\activate
+.venv\Scripts\activate.psi
 ```
