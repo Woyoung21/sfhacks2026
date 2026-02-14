@@ -1,56 +1,296 @@
-hours,0.9
-open,0.9
-close,0.9
-near me,0.9
-address,0.9
-phone number,0.9
-directions,0.9
-menu,0.9
-reservation,0.9
-price,0.9
-cost,0.9
-ticket,0.9
-flight,0.9
-hotel,0.9
-deal,0.9
-population,0.9
-gdp,0.9
-statistics,0.9
-rate,0.9
-percentage,0.9
-ranking,0.9
-ceo,0.9
-founder,0.9
-cast,0.9
-age,0.9
-birthday,0.9
-net worth,0.9
-map,0.9
-distance,0.9
-route,0.9
-traffic,0.9
-score,0.9
-result,0.9
-standing,0.9
-schedule,0.9
-today,0.9
-right now,0.9
-current,0.9
-latest,0.9
-news,0.9
-update,0.9
-who,0.7
-what,0.7
-where,0.7
-when,0.7
-which,0.7
-how many,0.7
-how much,0.7
-how far,0.7
-how long,0.7
-how tall,0.7
-how big,0.7
-how old,0.7
-why,0.4
-how,0.4
-
+keyword,bias
+address,99
+official website,99
+wikipedia,99
+directions,98
+hours,98
+simple forecast,98
+bus schedule,97
+earnings,97
+maps,97
+opening time,97
+train schedule,97
+news,96
+statistics,96
+what time is it,95
+currency rate,94
+deal,94
+flights,94
+near me,94
+breaking news,93
+live,93
+price,93
+age,92
+definition,92
+departure time,92
+exchange rate,92
+open now,92
+opening hours,92
+site,92
+stock price,92
+time zone,92
+arrival time,91
+unemployment rate,91
+air quality,90
+closing time,90
+flight,90
+latest news,90
+launch date,90
+market cap,90
+score,90
+time in,90
+weather,90
+current,89
+reservation,89
+tickets,89
+discount,88
+phone number,88
+pronunciation,88
+store hours,88
+founder,87
+meaning,87
+today,87
+who is the ceo,87
+forecast,86
+how far,86
+appointments,84
+book a table,84
+coupon,84
+meaning of,84
+transit,84
+aqi,83
+business hours,83
+buy tickets,83
+hotels,83
+quick traffic,83
+rain,83
+release date,83
+contact,82
+population,82
+when did,82
+who is,82
+quarterly results,81
+schedule,81
+distance,80
+where is,80
+earnings practical,79
+final score,79
+humidity,79
+cost,78
+crime rate,78
+hotel,78
+temperature,78
+box score,77
+net worth,77
+fee,76
+beginner link,75
+fixtures,75
+birthday,74
+gdp,74
+menu,73
+standings,73
+when did it come out,73
+link,72
+etymology,71
+google maps,71
+inflation rate,71
+right now,71
+update,71
+road closure,70
+traffic,70
+wind,70
+application simple,69
+easy time in,69
+hours today,69
+requirements,69
+beginner holiday hours,68
+easy requirements,68
+efficient where to buy,68
+forms,68
+postal code efficient,68
+specs,68
+time zone local,68
+availability,67
+best translate,67
+efficient customer service,67
+easy application,66
+local kilometers,66
+nearby distance,66
+sunrise nearby,66
+beginner sunrise,65
+distance nearby,65
+efficient movie times,65
+price comparison,65
+area code,64
+complete in stock,64
+events,64
+time in efficient,64
+local dimensions,63
+nearby sunset,63
+specs local,63
+theater times,63
+2026 warranty,62
+best return policy,62
+modern out of stock,62
+reviews fast,62
+warranty,62
+where to buy nearby,62
+2026 return policy,61
+advanced availability,61
+easy specifications,61
+efficient government website,61
+fast specs,61
+postal code cheap,61
+updated where to buy,61
+advanced warranty,60
+efficient out of stock,60
+local lookup,60
+nearby translation,60
+application,59
+best ingredients,59
+complete movie times,59
+nearby warranty,59
+time in easy,59
+translation complete,59
+application practical,58
+find,58
+requirements advanced,58
+stars,58
+2026 requirements,57
+advanced time in,57
+calories,57
+complete dictionary,57
+concerts,57
+miles,57
+route,57
+simple sunrise,57
+time in nearby,57
+translate quick,57
+2026 translate,56
+availability efficient,56
+best forms,56
+forms practical,56
+local zip code,56
+nutrition facts efficient,56
+translation practical,56
+advanced forms,55
+local specifications,55
+out of stock quick,55
+deadline,54
+in stock easy,54
+movie times,54
+nearby dimensions,54
+government website,53
+requirements modern,53
+sunset,53
+zip code,53
+beginner hours today,52
+deadline best,52
+dictionary,52
+practical reviews,52
+search,52
+simple distance,52
+updated weight,52
+weight,52
+advanced sunset,51
+best nutrition facts,51
+price comparison 2026,51
+sunrise simple,51
+theater times beginner,51
+translate,51
+lookup,50
+best translation,49
+efficient route,49
+holiday hours,49
+route complete,49
+sunrise,49
+sunset complete,49
+advanced sunrise,48
+complete lookup,48
+government website quick,48
+ingredients,48
+updated warranty,48
+advanced return policy,47
+complete where to buy,47
+forms efficient,47
+kilometers,47
+nearby nutrition facts,47
+advanced dimensions,46
+availability advanced,46
+easy return policy,46
+modern in stock,46
+showtimes,46
+best time in,45
+best zip code,45
+rating,45
+return policy,45
+return policy beginner,45
+simple availability,45
+advanced deadline,44
+advanced showtimes,44
+customer service,44
+modern distance,44
+nutrition facts,44
+postal code,44
+quick lookup,44
+quick requirements,44
+specifications,44
+updated dictionary,44
+best dimensions,43
+practical weight,43
+quick forms,43
+translation,43
+warranty efficient,43
+best stars,42
+efficient translate,42
+local distance,42
+out of stock,42
+out of stock complete,42
+quick availability,42
+reviews,42
+simple zip code,42
+support number,42
+where to buy,42
+advanced concerts,41
+cheap rating,41
+cheap reviews,41
+cheap support number,41
+efficient forms,41
+specifications complete,41
+advanced government website,40
+beginner postal code,40
+beginner zip code,40
+dimensions,40
+in stock,40
+practical translate,40
+translate best,40
+updated movie times,40
+explain,38
+difference,37
+top,30
+who,28
+when,26
+where,26
+compare,24
+edit this email,23
+make this shorter,23
+rewrite,23
+rewrite this email,23
+shorten,23
+turn these notes into,23
+fix grammar,22
+proofread,22
+rephrase,22
+summarize,22
+why,22
+bullet points,21
+paraphrase,21
+format this,20
+vs,20
+which,20
+summary,19
+best,18
+what,18
+how,16
+2x,12
+build,12
