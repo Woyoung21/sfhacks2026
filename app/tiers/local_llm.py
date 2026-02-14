@@ -318,17 +318,29 @@ class LocalLLM:
             except Exception:
                 text_input = prompt
 
+            # ── ExecuTorch backend ──────────────────────
+            # API: generate(prompt_tokens: List[int], max_seq_len=None) -> List[int]
+            if self._backend == "executorch":
+                token_ids = self._tokenizer.encode(text_input)
+                prompt_len = len(token_ids)
+                output_ids = self._model.generate(
+                    prompt_tokens=token_ids,
+                    max_seq_len=prompt_len + max_tok,
+                )
+                # output_ids includes the prompt; strip it
+                new_token_ids = output_ids[prompt_len:]
+                text = self._tokenizer.decode(new_token_ids, skip_special_tokens=True)
+                return text.strip(), len(new_token_ids), prompt_len
+
+            # ── Transformers backend ────────────────────
             inputs = self._tokenizer(text_input, return_tensors="pt")
 
-            # Move inputs to model device if using transformers
-            if self._backend == "transformers":
-                import torch
-                device = next(self._model.parameters()).device
-                inputs = {k: v.to(device) for k, v in inputs.items()}
+            import torch
+            device = next(self._model.parameters()).device
+            inputs = {k: v.to(device) for k, v in inputs.items()}
 
             prompt_len = inputs["input_ids"].shape[-1]
 
-            # Generate
             gen_kwargs = {
                 "max_new_tokens": max_tok,
                 "do_sample": temp > 0,
@@ -385,7 +397,16 @@ class LocalLLM:
         max_tok = max_tokens or self._max_tokens
         temp = temperature if temperature is not None else self._temperature
 
-        # Try native streaming with TextIteratorStreamer
+        # ── ExecuTorch: no TextIteratorStreamer, use chunked fallback ──
+        if self._backend == "executorch":
+            result = await self.generate(prompt, max_tok, temp)
+            words = result.text.split()
+            for i, word in enumerate(words):
+                yield word + ("" if i == len(words) - 1 else " ")
+                await asyncio.sleep(0.01)
+            return
+
+        # ── Transformers: native streaming with TextIteratorStreamer ──
         try:
             from transformers import TextIteratorStreamer
             import threading
@@ -403,10 +424,9 @@ class LocalLLM:
 
             inputs = self._tokenizer(text_input, return_tensors="pt")
 
-            if self._backend == "transformers":
-                import torch
-                device = next(self._model.parameters()).device
-                inputs = {k: v.to(device) for k, v in inputs.items()}
+            import torch
+            device = next(self._model.parameters()).device
+            inputs = {k: v.to(device) for k, v in inputs.items()}
 
             streamer = TextIteratorStreamer(
                 self._tokenizer,
