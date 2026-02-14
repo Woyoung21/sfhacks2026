@@ -319,16 +319,16 @@ class LocalLLM:
                 text_input = prompt
 
             # ── ExecuTorch backend ──────────────────────
-            # API: generate(prompt_tokens: List[int], max_seq_len=None) -> List[int]
+            # API: generate(prompt_tokens: List[int], echo=False,
+            #               max_seq_len=None) -> List[int]
+            # With echo=False (default), returns ONLY new tokens (no prompt).
             if self._backend == "executorch":
                 token_ids = self._tokenizer.encode(text_input)
                 prompt_len = len(token_ids)
-                output_ids = self._model.generate(
+                new_token_ids = self._model.generate(
                     prompt_tokens=token_ids,
                     max_seq_len=prompt_len + max_tok,
                 )
-                # output_ids includes the prompt; strip it
-                new_token_ids = output_ids[prompt_len:]
                 text = self._tokenizer.decode(new_token_ids, skip_special_tokens=True)
                 return text.strip(), len(new_token_ids), prompt_len
 
