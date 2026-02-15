@@ -1,19 +1,33 @@
+"""
+Tier 1 search adapter for Linkup.
+
+Single-purpose module used by RoutingEngine so Tier 1 behavior is centralized.
+"""
+
+from __future__ import annotations
+
+import os
+
 from linkup import LinkupClient
 
-client = LinkupClient(
-    api_key="2951c1df-bf36-40da-81a0-1d940051ab89",  # Or set the LINKUP_API_KEY environment variable
-)
 
-# Perform a search query
-search_response = client.search(
-    query="What is the weather in San Francisco today?",
-    depth="standard",
-    output_type="sourcedAnswer",
-)
-print(search_response.answer)
+def search_with_linkup(query: str) -> str:
+    """
+    Run a Linkup search query and return answer text.
 
-# # Fetch the content of a web page
-# response = client.fetch(
-#     url="https://docs.linkup.so",
-# )
-# print(response)
+    Raises:
+        RuntimeError: if LINKUP_API_KEY is missing.
+        Exception: any Linkup client/network error.
+    """
+    api_key = os.getenv("LINKUP_API_KEY", "").strip()
+    if not api_key:
+        raise RuntimeError("LINKUP_API_KEY not set")
+
+    client = LinkupClient(api_key=api_key)
+    search_response = client.search(
+        query=query,
+        depth="standard",
+        output_type="sourcedAnswer",
+    )
+
+    return getattr(search_response, "answer", str(search_response)) or ""

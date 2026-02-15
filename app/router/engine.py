@@ -39,6 +39,7 @@ from pathlib import Path
 from dataclasses import dataclass, field
 from typing import Optional, Literal
 from datetime import datetime, timezone
+from app.router.thresholds import AdaptiveThresholds
 
 try:
     from dotenv import load_dotenv
@@ -176,6 +177,7 @@ class RoutingEngine:
         self._ready = False
         self._metrics = EngineMetrics()
         self._embedding_unavailable_logged = False
+        self._thresholds = AdaptiveThresholds()
 
     # ─── Lifecycle ─────────────────────────────
 
@@ -290,18 +292,27 @@ class RoutingEngine:
         cache_hit = await self._check_cache(query)
         if cache_hit:
             elapsed_ms = (time.perf_counter() - start) * 1000
+            cached_tier = int(cache_hit.get("tier", 0))
+            carbon_status, carbon_modifier = await self._get_carbon_info()
             self._metrics.total_requests += 1
             self._metrics.cache_hits += 1
+            if cached_tier in self._metrics.tier_counts:
+                self._metrics.tier_counts[cached_tier] += 1
+            else:
+                self._metrics.tier_counts[cached_tier] = 1
             return RouteResult(
                 response=cache_hit["response"],
-                tier_used=cache_hit["tier"],
-                tier_name=TIER_NAMES.get(cache_hit["tier"], "Cached"),
+                tier_used=cached_tier,
+                tier_name=TIER_NAMES.get(cached_tier, "Cached"),
                 routing_reason="Semantic cache hit (similar query answered before)",
+                original_tier=cached_tier,
                 cached=True,
                 latency_ms=elapsed_ms,
                 energy_kwh=0.0,     # No computation needed
+                carbon_modifier=carbon_modifier,
                 mode=mode,
-                carbon_status=await self._get_carbon_status(),
+                carbon_status=carbon_status,
+                model_info=f"cache:tier-{cached_tier}",
                 timestamp=_utc_now(),
             )
 
@@ -309,8 +320,43 @@ class RoutingEngine:
         classified = self._classify(query)
         classification_detail = self._get_classification_detail(query)
         complexity_score = self._derive_complexity_score(classification_detail, classified)
-        initial_tier = TIER_MAP.get(classified, 2)
         reasons.append(f"Classified as {classified}")
+
+        # ── Step 3: Carbon Grid Modifier ───────────
+        carbon_status, carbon_modifier = await self._get_carbon_info()
+        reasons.append(f"grid={carbon_status}" + (f" ({carbon_modifier:+d})" if carbon_modifier else ""))
+
+        # ── Step 4: Threshold Resolver ─────────────
+        classifier_tier = TIER_MAP.get(classified, 2)
+        threshold_tier = self._thresholds.pick_tier(
+            complexity_score=complexity_score,
+            mode="performance",     # keep mode/carbon adjustments centralized in _apply_mode
+            carbon_modifier=0,
+        )
+        raw_threshold_tier = threshold_tier
+        if threshold_tier > classifier_tier + 1:
+            threshold_tier = classifier_tier + 1
+        elif threshold_tier < classifier_tier - 1:
+            threshold_tier = classifier_tier - 1
+
+        gates = classification_detail.get("gates_hit", {}) if classification_detail else {}
+        has_lookup_gate = bool(gates.get("lookup_gate", []))
+        forced_by_gate = bool(classification_detail.get("forced_by_gate", False)) if classification_detail else False
+
+        if has_lookup_gate and classifier_tier == 1:
+            initial_tier = classifier_tier
+            reasons.append("thresholds=preserve-search-lookup-gate")
+        elif forced_by_gate:
+            initial_tier = classifier_tier
+            reasons.append("thresholds=preserve-forced-gate")
+        else:
+            initial_tier = threshold_tier
+            reasons.append(
+                f"thresholds=score:{complexity_score} "
+                f"classifier:{TIER_NAMES[classifier_tier]} "
+                f"raw:{TIER_NAMES[raw_threshold_tier]} "
+                f"resolved:{TIER_NAMES[initial_tier]}"
+            )
 
         # Optional routing hint from VectorDB history (only if confidence is high)
         hint = await self._get_vector_routing_hint(query)
@@ -322,10 +368,6 @@ class RoutingEngine:
                     f"(conf={confidence:.2f}, k={neighbors})"
                 )
                 initial_tier = hinted_tier
-
-        # ── Step 3: Carbon Grid Modifier ───────────
-        carbon_status, carbon_modifier = await self._get_carbon_info()
-        reasons.append(f"grid={carbon_status}" + (f" ({carbon_modifier:+d})" if carbon_modifier else ""))
 
         # ── Step 4: Mode Adjustment ────────────────
         final_tier = self._apply_mode(initial_tier, mode, carbon_modifier, carbon_status)
@@ -580,32 +622,20 @@ class RoutingEngine:
             return "Unknown tier", ""
 
     async def _execute_search(self, query: str) -> tuple[str, str]:
-        """Tier 1: Web search via Linkup API."""
+        """Tier 1: Web search via Linkup adapter."""
         try:
-            from linkup import LinkupClient
-            import os
+            from app.tiers.bad_search import search_with_linkup
 
-            api_key = os.getenv("LINKUP_API_KEY", "")
-            if not api_key:
-                logger.warning("LINKUP_API_KEY not set, search unavailable")
-                return "", "search:no-api-key"
-
-            client = LinkupClient(api_key=api_key)
-
-            # Run sync client in executor to not block async loop
             loop = asyncio.get_event_loop()
-            search_response = await loop.run_in_executor(
-                None,
-                lambda: client.search(
-                    query=query,
-                    depth="standard",
-                    output_type="sourcedAnswer",
-                ),
-            )
+            answer = await loop.run_in_executor(None, lambda: search_with_linkup(query))
 
-            answer = getattr(search_response, "answer", str(search_response))
-            return answer or "", "search:linkup"
+            if not answer:
+                return "", "search:empty"
+            return answer, "search:linkup"
 
+        except RuntimeError as e:
+            logger.warning("Search unavailable: %s", e)
+            return "", "search:no-api-key"
         except Exception as e:
             logger.error("Search tier error: %s", e)
             return "", f"search:error:{e}"

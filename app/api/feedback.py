@@ -9,14 +9,21 @@ Update VectorDB routing_history feedback (authoritative)
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, asdict
 from datetime import datetime, timezone
 from typing import Literal, Optional
+
+from fastapi import APIRouter, HTTPException
+from pydantic import BaseModel, Field
 
 from app.db.vectordb import VectorStore
 
 FeedbackValue = Literal["up", "down"]
 VectorDBFeedbackValue = Literal["thumbs_up", "thumbs_down"]
+TierLabel = Literal["Search", "Local", "Cloud"]
+
+
+router = APIRouter()
 
 
 @dataclass(frozen=True)
@@ -103,3 +110,21 @@ async def record_feedback(
         updated=True,
     )
 
+
+class FeedbackRequest(BaseModel):
+    entry_id: int = Field(..., description="VectorDB routing_history entry id")
+    classification: TierLabel
+    feedback: FeedbackValue
+
+
+@router.post("/feedback")
+async def submit_feedback(payload: FeedbackRequest) -> dict:
+    try:
+        rec = await record_feedback(
+            entry_id=payload.entry_id,
+            classification=payload.classification,
+            feedback=payload.feedback,
+        )
+        return asdict(rec)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"feedback failed: {e}") from e
