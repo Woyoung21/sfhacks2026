@@ -164,6 +164,11 @@ class VectorStore:
         else:
             logger.info(f"Collection exists: {CACHE_COLLECTION}")
 
+        # Validate that collections can accept writes. In some restart scenarios
+        # the collection metadata is present but inserts fail at the storage layer.
+        await self._repair_if_unwritable(ROUTING_COLLECTION)
+        await self._repair_if_unwritable(CACHE_COLLECTION)
+
         # Sync ID counters with existing data
         try:
             self._routing_id_counter = await self._client.count(ROUTING_COLLECTION)
@@ -176,6 +181,37 @@ class VectorStore:
             f"VectorStore ready: {self._routing_id_counter} routing entries, "
             f"{self._cache_id_counter} cache entries"
         )
+
+    async def _repair_if_unwritable(self, collection: str) -> None:
+        """
+        Recreate a collection if a simple probe insert/delete fails.
+        """
+        if not self._client:
+            return
+
+        try:
+            # Reuse a fixed probe ID so startup checks are idempotent.
+            probe_id = 2_000_000_000
+            # Avoid zero vectors: normalization backends can reject them.
+            probe_vector = [0.001] * self._dim
+            await self._client.upsert(
+                collection,
+                id=probe_id,
+                vector=probe_vector,
+                payload={"probe": "ok"},
+            )
+        except Exception as e:
+            logger.warning(
+                "Collection '%s' appears unwritable (%s); recreating it",
+                collection,
+                e,
+            )
+            await self._client.recreate_collection(
+                name=collection,
+                dimension=self._dim,
+                distance_metric=DistanceMetric.COSINE,
+            )
+            logger.info("Recreated collection: %s", collection)
 
     async def close(self):
         """Disconnect from VectorAI DB. Call this on app shutdown."""
