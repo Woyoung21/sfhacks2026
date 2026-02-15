@@ -107,6 +107,10 @@ def create_app(*, testing: bool = False) -> FastAPI:
     async def chat_page(request: Request) -> HTMLResponse:
         return templates.TemplateResponse("chat.html", {"request": request, "page": "chat"})
 
+    @app.get("/results", response_class=HTMLResponse)
+    async def results_page(request: Request) -> HTMLResponse:
+        return templates.TemplateResponse("results.html", {"request": request, "page": "results"})
+
     @app.get("/dashboard", response_class=HTMLResponse)
     async def dashboard_page(request: Request) -> HTMLResponse:
         return templates.TemplateResponse("dashboard.html", {"request": request, "page": "dashboard"})

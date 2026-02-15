@@ -1,5 +1,14 @@
 {% extends "base.html" %}
 {% block content %}
+<style>
+  .panel.hero,
+  .panel.dashboard-grid,
+  .panel.split {
+    max-width: 1000px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+</style>
 <section class="panel hero">
   <h1>Live Routing Metrics</h1>
   <p>Track tier distribution, cache hit rate, and estimated electrical savings vs all-cloud baseline.</p>
@@ -9,9 +18,39 @@
   <div class="metric-card"><div class="metric-label">Total Requests</div><div class="metric-value" id="m-total">0</div></div>
   <div class="metric-card"><div class="metric-label">Cache Hits</div><div class="metric-value" id="m-cache">0</div></div>
   <div class="metric-card"><div class="metric-label">Escalations</div><div class="metric-value" id="m-escalations">0</div></div>
-  <div class="metric-card"><div class="metric-label">Avg Latency</div><div class="metric-value" id="m-latency">0 ms</div></div>
-  <div class="metric-card"><div class="metric-label">Energy Used</div><div class="metric-value" id="m-energy">0 kWh</div></div>
-  <div class="metric-card emphasis"><div class="metric-label">Energy Saved</div><div class="metric-value" id="m-saved">0 kWh</div></div>
+  <div class="stat-orb" id="latency-orb">
+    <svg class="orb-progress" viewBox="0 0 120 120">
+      <circle cx="60" cy="60" r="50" class="progress-bg"></circle>
+      <circle cx="60" cy="60" r="50" class="progress-fill" id="latency-progress"></circle>
+    </svg>
+    <div class="orb-core">
+      <div class="orb-label">Avg Latency</div>
+      <div class="orb-value" id="m-latency">-</div>
+      <div class="orb-unit">ms</div>
+    </div>
+  </div>
+  <div class="stat-orb" id="energy-orb">
+    <svg class="orb-progress" viewBox="0 0 120 120">
+      <circle cx="60" cy="60" r="50" class="progress-bg"></circle>
+      <circle cx="60" cy="60" r="50" class="progress-fill" id="energy-progress"></circle>
+    </svg>
+    <div class="orb-core">
+      <div class="orb-label">Energy Used</div>
+      <div class="orb-value" id="m-energy">-</div>
+      <div class="orb-unit">kWh</div>
+    </div>
+  </div>
+  <div class="stat-orb" id="saved-orb" style="border: 1px solid rgba(39, 215, 150, 0.4);">
+    <svg class="orb-progress" viewBox="0 0 120 120">
+      <circle cx="60" cy="60" r="50" class="progress-bg"></circle>
+      <circle cx="60" cy="60" r="50" class="progress-fill" id="saved-progress" style="stroke: var(--green);"></circle>
+    </svg>
+    <div class="orb-core">
+      <div class="orb-label emphasis">Energy Saved</div>
+      <div class="orb-value" id="m-saved">-</div>
+      <div class="orb-unit">kWh</div>
+    </div>
+  </div>
 </section>
 
 <section class="panel split">

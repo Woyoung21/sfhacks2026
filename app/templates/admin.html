@@ -1,11 +1,22 @@
 {% extends "base.html" %}
 {% block content %}
-<section class="panel hero">
-  <h1>Routing Admin Controls</h1>
-  <p>Tune defaults and behavior bounds for demos and experiments.</p>
-</section>
+<style>
+  .admin-container {
+    max-width: 900px;
+    margin: 0 auto;
+  }
+  .admin-container .panel {
+    max-width: 900px;
+  }
+</style>
 
-<section class="panel admin-form">
+<div class="admin-container">
+  <section class="panel hero">
+    <h1>Routing Admin Controls</h1>
+    <p>Tune defaults and behavior bounds for demos and experiments.</p>
+  </section>
+
+  <section class="panel admin-form">
   <label class="label">Default Mode</label>
   <select id="default-mode">
     <option value="eco">Eco</option>
@@ -23,6 +34,8 @@
   <button id="save-admin" class="btn-primary">Save Admin Config</button>
   <pre id="admin-status">Loading config...</pre>
 </section>
+
+</div>
 
 <script src="/static/js/admin.js?v=20260215c"></script>
 {% endblock %}

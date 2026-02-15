@@ -55,9 +55,33 @@
       el.total.textContent = live.total_requests ?? 0;
       el.cache.textContent = live.cache_hits ?? 0;
       el.escalations.textContent = live.escalations ?? 0;
-      el.latency.textContent = `${live.avg_latency_ms ?? 0} ms`;
-      el.energy.textContent = `${live.total_energy_kwh ?? 0} kWh`;
-      el.saved.textContent = `${live.energy_saved_kwh ?? 0} kWh (${live.energy_saved_pct ?? 0}%)`;
+      
+      // Update latency with animated progress
+      const latency = (live.avg_latency_ms ?? 0);
+      el.latency.textContent = `${latency.toFixed(1)}`;
+      const latencyProgress = document.getElementById('latency-progress');
+      if (latencyProgress) {
+        const latencyPct = Math.min(latency / 500, 1) * 314; // Max 500ms fills the circle
+        latencyProgress.style.strokeDashoffset = 314 - latencyPct;
+      }
+      
+      // Update energy with animated progress
+      const energy = (live.total_energy_kwh ?? 0);
+      el.energy.textContent = `${energy.toFixed(4)}`;
+      const energyProgress = document.getElementById('energy-progress');
+      if (energyProgress) {
+        const energyPct = Math.min(energy / 0.1, 1) * 314; // Max 0.1 kWh fills the circle
+        energyProgress.style.strokeDashoffset = 314 - energyPct;
+      }
+      
+      // Update saved with animated progress
+      const saved = (live.energy_saved_kwh ?? 0);
+      el.saved.textContent = `${saved.toFixed(4)}`;
+      const savedProgress = document.getElementById('saved-progress');
+      if (savedProgress) {
+        const savedPct = Math.min(saved / 0.1, 1) * 314; // Max 0.1 kWh fills the circle
+        savedProgress.style.strokeDashoffset = 314 - savedPct;
+      }
 
       const total = Number(live.total_requests || 0);
       const t1 = Number(tiers[1] || 0);

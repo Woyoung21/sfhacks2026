@@ -1,0 +1,430 @@
+{% extends "base.html" %}
+{% block content %}
+<style>
+  .results-container {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 20px;
+  }
+
+  .results-header {
+    margin-bottom: 30px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  }
+
+  .results-header h2 {
+    margin: 0 0 10px 0;
+    color: var(--muted);
+    font-size: 0.9rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  .results-header .query-text {
+    font-size: 1.5rem;
+    color: var(--text);
+    word-wrap: break-word;
+  }
+
+  .back-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--blue);
+    text-decoration: none;
+    margin-bottom: 20px;
+    font-size: 0.95rem;
+  }
+
+  .back-link:hover {
+    color: var(--green);
+  }
+
+  .results-metrics {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+    margin-bottom: 30px;
+  }
+
+  .result-card {
+    background: linear-gradient(170deg, rgba(255,255,255,.02), rgba(255,255,255,.005));
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 16px;
+    text-align: center;
+  }
+
+  .result-card .label {
+    color: var(--muted);
+    font-size: 0.85rem;
+    margin-bottom: 8px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+
+  .result-card .value {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--text);
+  }
+
+  .result-card.tier .value {
+    background: linear-gradient(135deg, var(--green), var(--blue));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .response-section {
+    background: linear-gradient(170deg, rgba(255,255,255,.02), rgba(255,255,255,.005));
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    padding: 24px;
+    margin-top: 30px;
+  }
+
+  .response-section h3 {
+    margin: 0 0 16px 0;
+    color: var(--text);
+    font-size: 1.2rem;
+  }
+  .feedback-buttons {
+    display: flex;
+    gap: 12px;
+    margin-top: 20px;
+    align-items: center;
+  }
+
+  .feedback-btn {
+    background: transparent;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: var(--muted);
+    padding: 10px 16px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 1rem;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .feedback-btn:hover {
+    border-color: var(--blue);
+    color: var(--text);
+  }
+
+  .feedback-btn.thumbs-up:hover {
+    border-color: var(--green);
+    color: var(--green);
+  }
+
+  .feedback-btn.thumbs-down:hover {
+    border-color: var(--red);
+    color: var(--red);
+  }
+
+  .feedback-btn.submitted {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+
+  .feedback-status {
+    font-size: 0.9rem;
+    color: var(--muted);
+    margin-top: 12px;
+  }
+  .response-section pre {
+    margin: 0;
+    padding: 16px;
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 12px;
+    border: 1px solid var(--line);
+    color: var(--text);
+    font-size: 0.95rem;
+    line-height: 1.6;
+    overflow-x: auto;
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+
+  .routing-info {
+    margin-top: 16px;
+    padding: 12px;
+    background: rgba(39, 215, 150, 0.08);
+    border-left: 3px solid var(--green);
+    border-radius: 4px;
+    color: var(--muted);
+    font-size: 0.9rem;
+    max-height: 500px;
+    overflow: hidden;
+    transition: max-height 0.3s ease, opacity 0.3s ease;
+    opacity: 1;
+  }
+
+  .routing-info.collapsed {
+    max-height: 0;
+    opacity: 0;
+    padding: 0;
+    margin: 0;
+  }
+
+  .routing-toggle {
+    background: transparent;
+    border: none;
+    color: var(--green);
+    cursor: pointer;
+    font-size: 0.9rem;
+    padding: 0;
+    margin-top: 12px;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .routing-toggle:hover {
+    color: var(--blue);
+  }
+
+  .routing-toggle-icon {
+    display: inline-block;
+    transition: transform 0.3s ease;
+  }
+
+  .routing-toggle-icon.open {
+    transform: rotate(0deg);
+  }
+
+  .routing-toggle-icon.closed {
+    transform: rotate(-90deg);
+  }
+
+  .loading {
+    text-align: center;
+    padding: 40px 20px;
+    color: var(--muted);
+  }
+
+  .error {
+    background: rgba(255, 109, 119, 0.1);
+    border: 1px solid var(--red);
+    border-radius: 12px;
+    padding: 16px;
+    color: var(--red);
+    margin-top: 20px;
+  }
+
+  @media (max-width: 900px) {
+    .results-metrics {
+      grid-template-columns: 1fr;
+    }
+
+    .results-header .query-text {
+      font-size: 1.2rem;
+    }
+  }
+</style>
+
+<div class="results-container">
+  <a href="/" class="back-link">← Back to Search</a>
+
+  <div class="results-header">
+    <div class="query-text" id="query-display">-</div>
+  </div>
+
+  <div id="results-content" class="loading">
+    <span>Loading results...</span>
+  </div>
+</div>
+
+<script>
+(function() {
+  console.log('[Results Page] Page loaded, starting search...');
+  
+  const urlParams = new URLSearchParams(window.location.search);
+  const query = urlParams.get('query') || '';
+  const mode = urlParams.get('mode') || 'eco';
+
+  console.log('[Results Page] Query from URL:', query);
+  console.log('[Results Page] Mode from URL:', mode);
+  console.log('[Results Page] window.location.search:', window.location.search);
+
+  document.getElementById('query-display').textContent = query || '(No query)';
+
+  async function loadResults() {
+    console.log('[Results Page] loadResults() called, query:', query, 'mode:', mode);
+    
+    try {
+      console.log('[Results Page] Sending fetch to /api/chat...');
+      const res = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query, mode }),
+      });
+
+      console.log('[Results Page] Fetch response received, status:', res.status);
+
+      if (!res.ok) {
+        const data = await res.json();
+        console.error('[Results Page] API error:', data);
+        throw new Error(data.detail || `Request failed with status ${res.status}`);
+      }
+
+      const data = await res.json();
+      console.log('[Results Page] Got data from API:', data);
+      displayResults(data);
+    } catch (err) {
+      console.error('[Results Page] Error in loadResults:', err);
+      const contentDiv = document.getElementById('results-content');
+      contentDiv.classList.remove('loading');
+      contentDiv.innerHTML = `
+        <div class="error">
+          <strong>Error:</strong> ${err.message}
+        </div>
+      `;
+    }
+  }
+
+  function displayResults(data) {
+    console.log('[Results Page] displayResults() called');
+    const tierNum = Number(data.tier_used || 0);
+    const latency = Number(data.latency_ms || 0);
+    const energy = Number(data.energy_kwh || 0);
+    const tierName = data.tier_name || 'Unknown';
+    const response = data.response || '(No response)';
+    const routing_reason = data.routing_reason || '';
+    const entryId = Number(data.vector_entry_id || -1);
+
+    const metricsHTML = `
+      <div class="result-card tier">
+        <div class="label">Tier Used</div>
+        <div class="value">${tierName}</div>
+      </div>
+      <div class="result-card">
+        <div class="label">Latency</div>
+        <div class="value">${latency.toFixed(1)} ms</div>
+      </div>
+      <div class="result-card">
+        <div class="label">Energy</div>
+        <div class="value">${energy.toFixed(4)} kWh</div>
+      </div>
+    `;
+
+    const routingInfo = routing_reason ? `
+      <button class="routing-toggle" id="routing-toggle">
+        <span class="routing-toggle-icon open">▼</span>
+        <span>Routing Details</span>
+      </button>
+      <div class="routing-info" id="routing-details">
+        <strong>Routing Decision:</strong> ${routing_reason}
+      </div>
+    ` : '';
+
+    const feedbackHTML = entryId >= 0 ? `
+      <div class="feedback-buttons">
+        <span style="color: var(--muted); font-size: 0.9rem;">Was this response helpful?</span>
+        <button class="feedback-btn thumbs-up" data-entry-id="${entryId}" data-feedback="up" title="Thumbs up">👍 Yes</button>
+        <button class="feedback-btn thumbs-down" data-entry-id="${entryId}" data-feedback="down" title="Thumbs down">👎 No</button>
+      </div>
+      <div class="feedback-status" id="feedback-status"></div>
+    ` : '';
+
+    const responseHTML = `
+      <div class="results-metrics">
+        ${metricsHTML}
+      </div>
+      <div class="response-section">
+        <h3>Response</h3>
+        <pre>${response}</pre>
+        ${feedbackHTML}
+        ${routingInfo}
+      </div>
+    `;
+
+    const contentDiv = document.getElementById('results-content');
+    contentDiv.classList.remove('loading');
+    contentDiv.innerHTML = responseHTML;
+
+    // Attach routing toggle logic
+    const routingToggle = document.getElementById('routing-toggle');
+    const routingDetails = document.getElementById('routing-details');
+    if (routingToggle && routingDetails) {
+      routingDetails.classList.add('collapsed');
+      const icon = routingToggle.querySelector('.routing-toggle-icon');
+      icon.classList.remove('open');
+      icon.classList.add('closed');
+
+      routingToggle.addEventListener('click', () => {
+        routingDetails.classList.toggle('collapsed');
+        icon.classList.toggle('open');
+        icon.classList.toggle('closed');
+      });
+    }
+
+    // Attach feedback event listeners
+    if (entryId >= 0) {
+      document.querySelectorAll('.feedback-btn').forEach(btn => {
+        btn.addEventListener('click', async (e) => {
+          const button = e.currentTarget;
+          const btnEntryId = Number(button.dataset.entryId);
+          const feedback = button.dataset.feedback;
+          
+          button.disabled = true;
+          button.classList.add('submitted');
+          
+          try {
+            const feedbackRes = await fetch('/api/feedback', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                entry_id: btnEntryId,
+                classification: tierName,
+                feedback: feedback
+              })
+            });
+            
+            if (feedbackRes.ok) {
+              const feedbackStatus = document.getElementById('feedback-status');
+              feedbackStatus.textContent = '✓ Thank you for your feedback!';
+              feedbackStatus.style.color = 'var(--green)';
+              // Disable both buttons
+              document.querySelectorAll('.feedback-btn').forEach(b => {
+                b.disabled = true;
+                b.classList.add('submitted');
+              });
+            } else {
+              throw new Error('Feedback submission failed');
+            }
+          } catch (err) {
+            const feedbackStatus = document.getElementById('feedback-status');
+            feedbackStatus.textContent = '✗ Error submitting feedback';
+            feedbackStatus.style.color = 'var(--red)';
+            button.disabled = false;
+            button.classList.remove('submitted');
+          }
+        });
+      });
+    }
+  }
+
+  console.log('[Results Page] query truthy check:', !!query);
+  
+  if (query) {
+    console.log('[Results Page] Query exists, calling loadResults()');
+    loadResults();
+  } else {
+    console.log('[Results Page] No query, showing error');
+    const contentDiv = document.getElementById('results-content');
+    contentDiv.classList.remove('loading');
+    contentDiv.innerHTML = `
+      <div class="error">
+        <strong>No query provided.</strong> <a href="/" style="color: var(--blue);">Go back and try again.</a>
+      </div>
+    `;
+  }
+})();
+</script>
+{% endblock %}

@@ -110,6 +110,7 @@ class RouteResult:
     cached: bool = False                   # Served from semantic cache?
     model_info: str = ""                   # Backend/model details
     timestamp: str = ""                    # ISO timestamp
+    vector_entry_id: int = -1             # VectorDB entry ID for feedback
     debug: dict = field(default_factory=dict)  # Optional routing debug details
 
     def to_dict(self) -> dict:
@@ -128,6 +129,7 @@ class RouteResult:
             "cached": self.cached,
             "model_info": self.model_info,
             "timestamp": self.timestamp,
+            "vector_entry_id": self.vector_entry_id,
             "debug": self.debug,
         }
 
@@ -461,8 +463,8 @@ class RoutingEngine:
         self._metrics.tier_counts[final_tier] = self._metrics.tier_counts.get(final_tier, 0) + 1
         self._metrics.total_energy_kwh += energy
 
-        # Cache response in VectorDB (fire-and-forget, don't block)
-        asyncio.create_task(self._cache_response(query, response, final_tier, complexity_score))
+        # Cache response in VectorDB and get entry_id for feedback
+        vector_entry_id = await self._cache_response(query, response, final_tier, complexity_score)
 
         result = RouteResult(
             response=response,
@@ -479,6 +481,7 @@ class RoutingEngine:
             cached=False,
             model_info=model_info,
             timestamp=_utc_now(),
+            vector_entry_id=vector_entry_id,
             debug={
                 **debug_info,
                 "final_tier": final_tier,
@@ -638,23 +641,25 @@ class RoutingEngine:
 
         return None
 
-    async def _cache_response(self, query: str, response: str, tier: int, complexity_score: int):
-        """Cache the response in VectorDB for future semantic matches."""
+    async def _cache_response(self, query: str, response: str, tier: int, complexity_score: int) -> int:
+        """Cache the response in VectorDB for future semantic matches. Returns entry_id."""
         if not self._vector_store:
-            return
+            return -1
 
         try:
             embedding = await self._get_embedding(query)
             if embedding:
                 await self._vector_store.cache_response(embedding, response, tier)
-                await self._vector_store.log_query(
+                entry_id = await self._vector_store.log_query(
                     embedding,
                     tier_routed=tier,
                     complexity_score=complexity_score,
                     feedback=None,
                 )
+                return entry_id
         except Exception as e:
             logger.debug("Cache store failed: %s", e)
+        return -1
 
     async def _get_embedding(self, text: str) -> Optional[list]:
         """
@@ -748,8 +753,8 @@ class RoutingEngine:
                     )
                     retry = await loop.run_in_executor(None, make_call, completion_prompt)
                     if retry and not retry.startswith("Error") and len(retry.strip()) > len(response.strip()):
-                        return retry, "cloud:gemini-2.5-flash"
-                return response, "cloud:gemini-2.5-flash"
+                        return retry, "cloud:gemini-2.0-flash"
+                return response, "cloud:gemini-2.0-flash"
             else:
                 return response or "", f"cloud:error:{response}"
 

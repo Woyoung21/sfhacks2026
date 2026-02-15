@@ -3,26 +3,138 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Carbon-Smart Router</title>
+  <title>Smart-Carbon Browser</title>
+  <link rel="icon" type="image/png" href="/static/img/carbon_browser_logo_favicon.png" />
   <link rel="stylesheet" href="/static/css/style.css?v=20260215c" />
 </head>
 <body>
   <div class="bg-orb orb-a"></div>
   <div class="bg-orb orb-b"></div>
+  <div class="bg-orb orb-c"></div>
+  <div class="bg-orb orb-d"></div>
   <header class="topbar">
-    <a class="brand" href="/">
-      <span class="brand-dot"></span>
-      <span>Carbon-Smart Router</span>
-    </a>
-    <nav class="nav">
+    <button class="info-button" id="info-btn" aria-label="Info" title="Learn more">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="10"></circle>
+        <line x1="12" y1="8" x2="12" y2="8.01"></line>
+        <line x1="12" y1="12" x2="12" y2="16"></line>
+      </svg>
+    </button>
+    <button class="hamburger-menu" id="hamburger" aria-label="Menu" aria-expanded="false">
+      <span class="burger-line"></span>
+      <span class="burger-line"></span>
+      <span class="burger-line"></span>
+    </button>
+    <nav class="nav-dropdown" id="nav-menu">
       <a class="nav-link {% if page == 'chat' %}active{% endif %}" href="/">Chat</a>
       <a class="nav-link {% if page == 'dashboard' %}active{% endif %}" href="/dashboard">Dashboard</a>
       <a class="nav-link {% if page == 'admin' %}active{% endif %}" href="/admin">Admin</a>
     </nav>
   </header>
 
+  <!-- Info Modal -->
+  <div class="info-modal" id="info-modal">
+    <div class="info-modal-content">
+      <button class="info-modal-close" id="info-close">✕</button>
+      <div id="info-text"></div>
+    </div>
+  </div>
+
   <main class="layout">
     {% block content %}{% endblock %}
   </main>
+
+  <script>
+    (function() {
+      const hamburger = document.getElementById('hamburger');
+      const navMenu = document.getElementById('nav-menu');
+      const infoBtn = document.getElementById('info-btn');
+      const infoModal = document.getElementById('info-modal');
+      const infoClose = document.getElementById('info-close');
+      const infoText = document.getElementById('info-text');
+
+      // Hamburger menu logic
+      if (hamburger && navMenu) {
+        hamburger.addEventListener('click', () => {
+          const isOpen = hamburger.getAttribute('aria-expanded') === 'true';
+          hamburger.setAttribute('aria-expanded', !isOpen);
+          navMenu.classList.toggle('open');
+        });
+        navMenu.querySelectorAll('.nav-link').forEach(link => {
+          link.addEventListener('click', () => {
+            hamburger.setAttribute('aria-expanded', 'false');
+            navMenu.classList.remove('open');
+          });
+        });
+      }
+
+      // Info modal logic
+      const infoContent = {
+        chat: `
+          <h2>Eco vs Performance</h2>
+          <p><strong>Eco Mode:</strong> Prioritizes energy efficiency. Routes queries to Search (API) or Local LLM to minimize carbon footprint. Cloud AI is avoided.</p>
+          <p><strong>Performance Mode:</strong> Prioritizes response quality. Routes complex queries to Cloud AI for best results, even if it uses more energy.</p>
+          <hr>
+          <h2>How Feedback Works</h2>
+          <p>After getting a response, you can give <strong>👍 thumbs up</strong> (good response) or <strong>👎 thumbs down</strong> (poor response).</p>
+          <p>This feedback trains the router to make better decisions. If you mark a Local response as good, similar future queries will prefer Local. If you mark it as poor, future similar queries will try Cloud instead.</p>
+        `,
+        results: `
+          <h2>Eco vs Performance</h2>
+          <p><strong>Eco Mode:</strong> Prioritizes energy efficiency. Routes queries to Search (API) or Local LLM to minimize carbon footprint. Cloud AI is avoided.</p>
+          <p><strong>Performance Mode:</strong> Prioritizes response quality. Routes complex queries to Cloud AI for best results, even if it uses more energy.</p>
+          <hr>
+          <h2>How Feedback Works</h2>
+          <p>After getting a response, you can give <strong>👍 thumbs up</strong> (good response) or <strong>👎 thumbs down</strong> (poor response).</p>
+          <p>This feedback trains the router to make better decisions. If you mark a Local response as good, similar future queries will prefer Local. If you mark it as poor, future similar queries will try Cloud instead.</p>
+        `,
+        dashboard: `
+          <h2>Dashboard Metrics</h2>
+          <p><strong>Total Requests:</strong> Number of queries you\'ve made so far.</p>
+          <p><strong>Avg Latency:</strong> Average time (ms) to get a response from start to finish.</p>
+          <p><strong>Energy Used / Energy Saved:</strong> Estimated kilowatt-hours of energy. When you use Eco mode or cheaper tiers, you save energy vs using Cloud for everything.</p>
+          <p><strong>Frontier Calls Avoided:</strong> Number of times the system chose a cheaper tier instead of Cloud AI.</p>
+          <p><strong>Escalations:</strong> Times when a response was insufficient and auto-upgraded to a better tier.</p>
+          <hr>
+          <h2>Tier Breakdown</h2>
+          <p><strong>Tier 1 (Search):</strong> Fast web APIs for factual lookups. Lowest energy.</p>
+          <p><strong>Tier 2 (Local):</strong> Your device\'s LLM. Medium energy.</p>
+          <p><strong>Tier 3 (Cloud):</strong> Frontier AI (Gemini). Best quality, highest energy.</p>
+        `,
+        admin: `
+          <h2>Admin Panel</h2>
+          <p>Manage system configuration and thresholds. Adjust tier routing behavior, enable/disable components, and monitor system health.</p>
+        `,
+      };
+
+      function detectPage() {
+        const path = window.location.pathname;
+        if (path === '/') return 'chat';
+        if (path.includes('/results')) return 'results';
+        if (path.includes('/dashboard')) return 'dashboard';
+        if (path.includes('/admin')) return 'admin';
+        return 'chat';
+      }
+
+      if (infoBtn && infoModal && infoClose && infoText) {
+        infoBtn.addEventListener('click', () => {
+          const page = detectPage();
+          const content = infoContent[page] || infoContent.chat;
+          infoText.innerHTML = content;
+          infoModal.classList.add('open');
+        });
+
+        infoClose.addEventListener('click', () => {
+          infoModal.classList.remove('open');
+        });
+
+        infoModal.addEventListener('click', (e) => {
+          if (e.target === infoModal) {
+            infoModal.classList.remove('open');
+          }
+        });
+      }
+    })();
+  </script>
 </body>
 </html>
