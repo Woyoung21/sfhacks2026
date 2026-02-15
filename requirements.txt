@@ -14,6 +14,7 @@ google-genai>=1.63.0
 torch>=2.6.0
 transformers>=4.51.0
 optimum-executorch>=0.4.0
+sentence-transformers>=5.0.0
 
 # --- Common for env vars ---
 python-dotenv
@@ -22,3 +23,4 @@ python-dotenv
 # API runtime
 fastapi>=0.115.0
 uvicorn>=0.30.0
+jinja2>=3.1.0

@@ -9,8 +9,12 @@ from __future__ import annotations
 
 import os
 from contextlib import asynccontextmanager
+from pathlib import Path
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
+from fastapi.responses import HTMLResponse
+from fastapi.staticfiles import StaticFiles
+from fastapi.templating import Jinja2Templates
 
 from app.api.admin import router as admin_router
 from app.api.chat import router as chat_router
@@ -89,10 +93,27 @@ def create_app(*, testing: bool = False) -> FastAPI:
     app = FastAPI(title="SFHACKS2026 API", version="0.1.0", lifespan=lifespan)
     app.state.testing = testing
 
+    base_dir = Path(__file__).resolve().parent
+    app.mount("/static", StaticFiles(directory=base_dir / "static"), name="static")
+    templates = Jinja2Templates(directory=str(base_dir / "templates"))
+    app.state.templates = templates
+
     app.include_router(chat_router, prefix="/api")
     app.include_router(metrics_router, prefix="/api")
     app.include_router(feedback_router, prefix="/api")
     app.include_router(admin_router, prefix="/api")
+
+    @app.get("/", response_class=HTMLResponse)
+    async def chat_page(request: Request) -> HTMLResponse:
+        return templates.TemplateResponse("chat.html", {"request": request, "page": "chat"})
+
+    @app.get("/dashboard", response_class=HTMLResponse)
+    async def dashboard_page(request: Request) -> HTMLResponse:
+        return templates.TemplateResponse("dashboard.html", {"request": request, "page": "dashboard"})
+
+    @app.get("/admin", response_class=HTMLResponse)
+    async def admin_page(request: Request) -> HTMLResponse:
+        return templates.TemplateResponse("admin.html", {"request": request, "page": "admin"})
 
     @app.get("/healthz")
     async def healthz() -> dict:

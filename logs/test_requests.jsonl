@@ -1,0 +1,2 @@
+{"timestamp": "2026-02-15T04:57:01Z", "query": "hello", "mode": "eco", "tier_name": "Search", "tier_used": 1, "cached": false, "was_escalated": false, "routing_reason": "test-engine", "model_info": "test:search", "latency_ms": 1.0, "energy_kwh": 0.0}
+{"timestamp": "2026-02-15T04:58:05Z", "query": "hello", "mode": "eco", "tier_name": "Search", "tier_used": 1, "cached": false, "was_escalated": false, "routing_reason": "test-engine", "model_info": "test:search", "latency_ms": 1.0, "energy_kwh": 0.0}

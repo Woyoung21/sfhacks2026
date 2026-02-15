@@ -111,6 +111,9 @@ class VectorStore:
         self._dim = int(os.getenv("EMBEDDING_DIM", "384"))
         self._cache_ttl_hours = int(os.getenv("CACHE_TTL_HOURS", "24"))
         self._cache_similarity = float(os.getenv("CACHE_SIMILARITY", "0.93"))
+        self._pool_size = int(os.getenv("VECTORDB_POOL_SIZE", "1"))
+        self._keepalive_time_ms = int(os.getenv("VECTORDB_KEEPALIVE_MS", "600000"))
+        self._keepalive_timeout_ms = int(os.getenv("VECTORDB_KEEPALIVE_TIMEOUT_MS", "20000"))
         self._client: Optional[AsyncCortexClient] = None
 
         # Auto-incrementing IDs (tracked in-memory, reset on restart)
@@ -129,7 +132,14 @@ class VectorStore:
         Connect to VectorAI DB and create collections if they don't exist.
         Call this on app startup.
         """
-        self._client = AsyncCortexClient(self._host)
+        self._client = AsyncCortexClient(self._host, pool_size=self._pool_size)
+
+        # Actian SDK exposes internal pool config; tune keepalive to avoid
+        # server GOAWAY "too_many_pings" under idle/polling-heavy sessions.
+        if hasattr(self._client, "_pool_config"):
+            self._client._pool_config.keepalive_time_ms = self._keepalive_time_ms
+            self._client._pool_config.keepalive_timeout_ms = self._keepalive_timeout_ms
+
         await self._client.connect()
 
         # Create routing_history collection (embeddings + metadata only)

@@ -17,11 +17,16 @@ class LiveMetrics:
     tier_counts: dict[int, int] = field(default_factory=lambda: {1: 0, 2: 0, 3: 0})
     total_latency_ms: float = 0.0
     total_energy_kwh: float = 0.0
+    estimated_cloud_baseline_kwh: float = 0.0
 
     def to_dict(self) -> dict:
         avg_latency = 0.0
         if self.total_requests > 0:
             avg_latency = self.total_latency_ms / self.total_requests
+        energy_saved = max(0.0, self.estimated_cloud_baseline_kwh - self.total_energy_kwh)
+        energy_saved_pct = 0.0
+        if self.estimated_cloud_baseline_kwh > 0:
+            energy_saved_pct = (energy_saved / self.estimated_cloud_baseline_kwh) * 100.0
         return {
             "total_requests": self.total_requests,
             "cache_hits": self.cache_hits,
@@ -30,6 +35,9 @@ class LiveMetrics:
             "total_latency_ms": round(self.total_latency_ms, 2),
             "avg_latency_ms": round(avg_latency, 2),
             "total_energy_kwh": round(self.total_energy_kwh, 6),
+            "estimated_cloud_baseline_kwh": round(self.estimated_cloud_baseline_kwh, 6),
+            "energy_saved_kwh": round(energy_saved, 6),
+            "energy_saved_pct": round(energy_saved_pct, 2),
         }
 
 
@@ -40,12 +48,15 @@ class MetricsTracker:
 
     def record(self, result: Any) -> None:
         tier = int(getattr(result, "tier_used", 0))
+        # Baseline: what this request would have cost if always sent to frontier.
+        cloud_baseline_kwh = 0.008
         with self._lock:
             self._metrics.total_requests += 1
             self._metrics.cache_hits += 1 if bool(getattr(result, "cached", False)) else 0
             self._metrics.escalations += 1 if bool(getattr(result, "was_escalated", False)) else 0
             self._metrics.total_latency_ms += float(getattr(result, "latency_ms", 0.0))
             self._metrics.total_energy_kwh += float(getattr(result, "energy_kwh", 0.0))
+            self._metrics.estimated_cloud_baseline_kwh += cloud_baseline_kwh
             self._metrics.tier_counts[tier] = self._metrics.tier_counts.get(tier, 0) + 1
 
     def snapshot(self) -> dict:

@@ -67,7 +67,7 @@ logger = logging.getLogger(__name__)
 
 # Energy estimates per tier (kWh per request)
 ENERGY_SEARCH_KWH   = 0.0001   # ~0.1 Wh — simple API call
-ENERGY_LOCAL_KWH     = 0.001    # ~1 Wh — on-device inference
+ENERGY_LOCAL_KWH     = 0.0025   # ~2.5 Wh — on-device inference
 ENERGY_FRONTIER_KWH  = 0.008    # ~8 Wh — cloud frontier model
 
 # Tier labels
@@ -79,9 +79,12 @@ TIER_MAP = {
 TIER_NAMES = {1: "Search", 2: "Local", 3: "Cloud"}
 TIER_ENERGY = {1: ENERGY_SEARCH_KWH, 2: ENERGY_LOCAL_KWH, 3: ENERGY_FRONTIER_KWH}
 VECTOR_HINT_MIN_CONF = float(os.getenv("VECTOR_HINT_MIN_CONF", "0.70"))
+PERF_CLOUD_COMPLEXITY_FLOOR = int(os.getenv("PERF_CLOUD_COMPLEXITY_FLOOR", "85"))
 
 # Auto-escalation: minimum response length to consider "sufficient"
 MIN_RESPONSE_LEN = 10
+# If cloud responds with a very short partial thought, retry once with a continuation prompt.
+MIN_CLOUD_RESPONSE_LEN = 180
 
 Mode = Literal["eco", "performance"]
 
@@ -107,6 +110,7 @@ class RouteResult:
     cached: bool = False                   # Served from semantic cache?
     model_info: str = ""                   # Backend/model details
     timestamp: str = ""                    # ISO timestamp
+    debug: dict = field(default_factory=dict)  # Optional routing debug details
 
     def to_dict(self) -> dict:
         return {
@@ -124,6 +128,7 @@ class RouteResult:
             "cached": self.cached,
             "model_info": self.model_info,
             "timestamp": self.timestamp,
+            "debug": self.debug,
         }
 
 
@@ -314,6 +319,13 @@ class RoutingEngine:
                 carbon_status=carbon_status,
                 model_info=f"cache:tier-{cached_tier}",
                 timestamp=_utc_now(),
+                debug={
+                    "path": "cache_hit",
+                    "cached_tier": cached_tier,
+                    "carbon_status": carbon_status,
+                    "carbon_modifier": carbon_modifier,
+                    "calculation": "semantic cache hit -> return cached response",
+                },
             )
 
         # ── Step 2: Classify Query ─────────────────
@@ -321,6 +333,14 @@ class RoutingEngine:
         classification_detail = self._get_classification_detail(query)
         complexity_score = self._derive_complexity_score(classification_detail, classified)
         reasons.append(f"Classified as {classified}")
+        debug_info = {
+            "path": "fresh_route",
+            "classifier_label": classified,
+            "classifier_scores": classification_detail.get("scores", {}) if classification_detail else {},
+            "classifier_gates": classification_detail.get("gates_hit", {}) if classification_detail else {},
+            "forced_by_gate": bool(classification_detail.get("forced_by_gate", False)) if classification_detail else False,
+            "complexity_score": complexity_score,
+        }
 
         # ── Step 3: Carbon Grid Modifier ───────────
         carbon_status, carbon_modifier = await self._get_carbon_info()
@@ -357,6 +377,13 @@ class RoutingEngine:
                 f"raw:{TIER_NAMES[raw_threshold_tier]} "
                 f"resolved:{TIER_NAMES[initial_tier]}"
             )
+        debug_info.update(
+            {
+                "classifier_tier": classifier_tier,
+                "threshold_raw_tier": raw_threshold_tier,
+                "threshold_resolved_tier": initial_tier,
+            }
+        )
 
         # Optional routing hint from VectorDB history (only if confidence is high)
         hint = await self._get_vector_routing_hint(query)
@@ -368,10 +395,38 @@ class RoutingEngine:
                     f"(conf={confidence:.2f}, k={neighbors})"
                 )
                 initial_tier = hinted_tier
+            debug_info["vector_hint"] = {
+                "tier": hinted_tier,
+                "confidence": round(confidence, 3),
+                "neighbors": neighbors,
+            }
+        else:
+            debug_info["vector_hint"] = None
 
         # ── Step 4: Mode Adjustment ────────────────
-        final_tier = self._apply_mode(initial_tier, mode, carbon_modifier, carbon_status)
+        final_tier = self._apply_mode(
+            initial_tier,
+            mode,
+            carbon_modifier,
+            carbon_status,
+            complexity_score=complexity_score,
+        )
         reasons.append(f"mode={mode}")
+        debug_info.update(
+            {
+                "carbon_status": carbon_status,
+                "carbon_modifier": carbon_modifier,
+                "mode": mode,
+                "pre_mode_tier": initial_tier,
+                "post_mode_tier": final_tier,
+                "performance_cloud_floor": PERF_CLOUD_COMPLEXITY_FLOOR,
+                "effective_complexity_after_carbon": (
+                    max(0, complexity_score - max(0, carbon_modifier))
+                    if mode == "performance"
+                    else complexity_score
+                ),
+            }
+        )
 
         if final_tier != initial_tier:
             reasons.append(f"adjusted {TIER_NAMES[initial_tier]}->{TIER_NAMES[final_tier]}")
@@ -393,6 +448,9 @@ class RoutingEngine:
 
             response, model_info = await self._execute_tier(next_tier, query)
             final_tier = next_tier
+            debug_info["escalated_to_tier"] = final_tier
+        else:
+            debug_info["escalated_to_tier"] = None
 
         # ── Step 7: Cache + Log ────────────────────
         elapsed_ms = (time.perf_counter() - start) * 1000
@@ -421,6 +479,17 @@ class RoutingEngine:
             cached=False,
             model_info=model_info,
             timestamp=_utc_now(),
+            debug={
+                **debug_info,
+                "final_tier": final_tier,
+                "tier_name": TIER_NAMES.get(final_tier, "Unknown"),
+                "calculation": (
+                    f"classifier({classified}) -> thresholds(score={complexity_score}) -> "
+                    f"pre_mode_tier={debug_info.get('pre_mode_tier')} -> "
+                    f"mode/carbon_adjusted_tier={debug_info.get('post_mode_tier')} -> "
+                    f"final_tier={final_tier}"
+                ),
+            },
         )
 
         logger.info("Query routed: tier=%d (%s) | %.0fms | %s",
@@ -514,6 +583,7 @@ class RoutingEngine:
         mode: Mode,
         carbon_modifier: int,
         carbon_status: str,
+        complexity_score: int,
     ) -> int:
         """
         Adjust the tier based on mode and carbon.
@@ -524,8 +594,9 @@ class RoutingEngine:
             - Local stays Local
 
         Performance mode:
-            - Trust classifier unless carbon penalty is non-zero
-            - Medium/dirty penalty can push Cloud → Local
+            - Trust high-complexity cloud decisions.
+            - Carbon penalty subtracts from effective complexity.
+            - Only downgrade Cloud when effective complexity falls below floor.
 
         Carbon modifier (from grid.py):
             - clean=+0, medium=+8, dirty=+15
@@ -535,8 +606,12 @@ class RoutingEngine:
             # Eco always avoids frontier calls regardless of current grid cleanliness.
             return 2 if tier == 3 else tier
 
-        # Performance mode: keep classifier intent except when grid modifier penalizes cloud.
-        if tier == 3 and carbon_modifier > 0:
+        # Performance mode:
+        # Keep Cloud for strong complexity signals, even with dirty grid.
+        if tier == 3:
+            effective_complexity = max(0, int(complexity_score) - max(0, carbon_modifier))
+            if effective_complexity >= PERF_CLOUD_COMPLEXITY_FLOOR:
+                return 3
             return 2
         return tier
 
@@ -664,6 +739,16 @@ class RoutingEngine:
             response = await loop.run_in_executor(None, make_call, query)
 
             if response and not response.startswith("Error"):
+                if len(response.strip()) < MIN_CLOUD_RESPONSE_LEN:
+                    # One retry only, with explicit completion guidance.
+                    completion_prompt = (
+                        f"{query}\n\n"
+                        "Provide a complete, self-contained answer in natural language. "
+                        "Do not stop after an intro sentence."
+                    )
+                    retry = await loop.run_in_executor(None, make_call, completion_prompt)
+                    if retry and not retry.startswith("Error") and len(retry.strip()) > len(response.strip()):
+                        return retry, "cloud:gemini-2.5-flash"
                 return response, "cloud:gemini-2.5-flash"
             else:
                 return response or "", f"cloud:error:{response}"

@@ -1,0 +1,137 @@
+{% extends "base.html" %}
+{% block content %}
+<style>
+  .route-ui { padding: 14px; }
+  .prompt-shell {
+    display: grid;
+    grid-template-columns: 28px 1fr auto;
+    gap: 10px;
+    align-items: center;
+    border: 1px solid rgba(102, 150, 225, 0.35);
+    border-radius: 14px;
+    background: linear-gradient(130deg, rgba(11, 23, 46, 0.88), rgba(12, 22, 40, 0.86));
+    padding: 8px 10px;
+  }
+  .prompt-icon { color: var(--muted); font-size: 1rem; text-align: center; }
+  .prompt-input {
+    min-height: 50px;
+    max-height: 120px;
+    border: 0;
+    background: transparent;
+    resize: vertical;
+    color: var(--text);
+    line-height: 1.4;
+  }
+  .prompt-input:focus { outline: none; }
+  .prompt-mode {
+    display: inline-flex;
+    border-radius: 999px;
+    overflow: hidden;
+    border: 1px solid rgba(102, 150, 225, 0.32);
+    background: #0a1427;
+  }
+  .prompt-mode .mode-btn {
+    min-width: 62px;
+    padding: 8px 12px;
+    font-size: .78rem;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+  }
+  .run-btn { margin-top: 12px; }
+  .orb-row {
+    margin-top: 20px;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(160px, 1fr));
+    gap: 16px;
+  }
+  .stat-orb {
+    --pct: 0%;
+    width: 190px;
+    height: 190px;
+    border-radius: 50%;
+    margin: 0 auto;
+    border: 1px solid rgba(136, 176, 241, 0.2);
+    background: conic-gradient(from -90deg, #4de4a8 var(--pct), rgba(255, 255, 255, 0.1) 0);
+    display: grid;
+    place-items: center;
+    box-shadow: inset 0 0 0 6px rgba(6, 12, 22, 0.9), 0 10px 30px rgba(0, 0, 0, 0.35);
+  }
+  .orb-core {
+    width: 136px;
+    height: 136px;
+    border-radius: 50%;
+    border: 1px solid rgba(123, 168, 239, 0.18);
+    background: radial-gradient(circle at 35% 25%, rgba(28, 49, 82, 0.65), rgba(9, 17, 30, 0.92));
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 10px;
+  }
+  .orb-label { color: var(--muted); font-size: .84rem; margin-bottom: 7px; }
+  .orb-value { font-size: 1.65rem; line-height: 1.2; font-weight: 700; }
+  .response-clean { margin-top: 16px; }
+  .response-clean pre {
+    font-size: .95rem;
+    line-height: 1.55;
+    min-height: 120px;
+    max-height: 360px;
+    overflow: auto;
+  }
+  @media (max-width: 900px) {
+    .orb-row { grid-template-columns: 1fr; }
+    .prompt-shell { grid-template-columns: 22px 1fr; }
+    .prompt-mode { grid-column: 1 / -1; justify-self: end; }
+    .stat-orb { width: 158px; height: 158px; }
+    .orb-core { width: 108px; height: 108px; }
+    .orb-value { font-size: 1.35rem; }
+  }
+</style>
+<section class="panel hero">
+  <h1>Route Queries By Carbon + Complexity</h1>
+  <p>Cleaner chat view for daily use. Detailed routing and metrics remain on Admin and Dashboard.</p>
+</section>
+
+<section class="panel route-ui">
+  <label class="label" for="query">Ask a question</label>
+  <div class="prompt-shell">
+    <span class="prompt-icon" aria-hidden="true">⌕</span>
+    <textarea id="query" class="prompt-input" rows="1" placeholder="Teach me about superposition quantum mechanics..."></textarea>
+    <div class="prompt-mode" id="mode-toggle" role="tablist" aria-label="mode toggle">
+      <button class="mode-btn active" data-mode="eco" role="tab" aria-selected="true">ECO</button>
+      <button class="mode-btn" data-mode="performance" role="tab" aria-selected="false">PERF</button>
+    </div>
+  </div>
+
+  <button id="send" class="btn-primary run-btn">Run Route</button>
+
+  <div class="orb-row">
+    <div class="stat-orb" id="ring-tier">
+      <div class="orb-core">
+        <div class="orb-label">Tier Used</div>
+        <div class="orb-value" id="tier-used">-</div>
+      </div>
+    </div>
+    <div class="stat-orb" id="ring-latency">
+      <div class="orb-core">
+        <div class="orb-label">Latency</div>
+        <div class="orb-value" id="latency">-</div>
+      </div>
+    </div>
+    <div class="stat-orb" id="ring-energy">
+      <div class="orb-core">
+        <div class="orb-label">Energy</div>
+        <div class="orb-value" id="energy">-</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="response-block response-clean">
+    <div class="trace-title">Response</div>
+    <pre id="response">Run a query to see output.</pre>
+  </div>
+</section>
+
+<script src="/static/js/chat.js?v=20260215c"></script>
+{% endblock %}

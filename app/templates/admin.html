@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="panel hero">
+  <h1>Routing Admin Controls</h1>
+  <p>Tune defaults and behavior bounds for demos and experiments.</p>
+</section>
+
+<section class="panel admin-form">
+  <label class="label">Default Mode</label>
+  <select id="default-mode">
+    <option value="eco">Eco</option>
+    <option value="performance">Performance</option>
+  </select>
+
+  <label class="label">Vector Hint Min Confidence (0.0 - 1.0)</label>
+  <input id="hint-conf" type="number" min="0" max="1" step="0.01" />
+
+  <label class="checkbox-row">
+    <input id="cache-sync" type="checkbox" />
+    <span>Cache write sync (deterministic testing)</span>
+  </label>
+
+  <button id="save-admin" class="btn-primary">Save Admin Config</button>
+  <pre id="admin-status">Loading config...</pre>
+</section>
+
+<script src="/static/js/admin.js?v=20260215c"></script>
+{% endblock %}

@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Carbon-Smart Router</title>
+  <link rel="stylesheet" href="/static/css/style.css?v=20260215c" />
+</head>
+<body>
+  <div class="bg-orb orb-a"></div>
+  <div class="bg-orb orb-b"></div>
+  <header class="topbar">
+    <a class="brand" href="/">
+      <span class="brand-dot"></span>
+      <span>Carbon-Smart Router</span>
+    </a>
+    <nav class="nav">
+      <a class="nav-link {% if page == 'chat' %}active{% endif %}" href="/">Chat</a>
+      <a class="nav-link {% if page == 'dashboard' %}active{% endif %}" href="/dashboard">Dashboard</a>
+      <a class="nav-link {% if page == 'admin' %}active{% endif %}" href="/admin">Admin</a>
+    </nav>
+  </header>
+
+  <main class="layout">
+    {% block content %}{% endblock %}
+  </main>
+</body>
+</html>

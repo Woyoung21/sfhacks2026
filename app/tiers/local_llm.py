@@ -29,7 +29,7 @@ Usage:
 
 Environment variables:
     LOCAL_MODEL_ID      — HuggingFace model ID (default: see EXECUTORCH_MODEL)
-    LOCAL_MAX_TOKENS    — Default max new tokens (default: 256)
+    LOCAL_MAX_TOKENS    — Default max new tokens (default: 250)
     LOCAL_TEMPERATURE   — Default temperature (default: 0.7)
     LOCAL_DEVICE        — Force device: cpu / cuda / mps (default: auto)
     (No mock mode — always uses real ExecuTorch or transformers backend)
@@ -57,7 +57,7 @@ EXECUTORCH_MODEL = "larryliu0820/Qwen3-1.7B-INT8-INT4-ExecuTorch-XNNPACK"
 TRANSFORMERS_MODEL = "Qwen/Qwen3-1.7B"
 
 # Energy proxy constants (estimated kWh per request)
-ENERGY_LOCAL_KWH = 0.001    # ~1 Wh for local inference
+ENERGY_LOCAL_KWH = 0.0025   # ~2.5 Wh for local inference
 ENERGY_FRONTIER_KWH = 0.008 # ~8 Wh for a frontier API call (for comparison)
 
 
@@ -134,7 +134,7 @@ class LocalLLM:
         self._transformers_model_id = TRANSFORMERS_MODEL
 
         # Generation defaults
-        self._max_tokens = max_tokens or int(os.getenv("LOCAL_MAX_TOKENS", "512"))
+        self._max_tokens = max_tokens or int(os.getenv("LOCAL_MAX_TOKENS", "250"))
         self._temperature = temperature or float(os.getenv("LOCAL_TEMPERATURE", "0.7"))
 
         # System prompt — keeps Tier 2 responses concise and energy-efficient
@@ -374,8 +374,11 @@ class LocalLLM:
 
         elapsed_ms = (time.perf_counter() - start) * 1000
 
+        was_limited = num_tokens >= max_tok
+        finalized_text = self._finalize_text(text, was_limited)
+
         result = GenerateResult(
-            text=text,
+            text=finalized_text,
             tokens=num_tokens,
             prompt_tokens=prompt_tokens,
             latency_ms=elapsed_ms,
@@ -388,6 +391,28 @@ class LocalLLM:
         self._update_metrics(result)
 
         return result
+
+    def _finalize_text(self, text: str, was_limited: bool) -> str:
+        """
+        Keep responses readable when generation reaches token cap.
+        If capped and likely unfinished, trim to the last complete sentence.
+        """
+        cleaned = (text or "").strip()
+        if not cleaned:
+            return ""
+        if not was_limited:
+            return cleaned
+
+        end_punct = ".!?"
+        if cleaned[-1] in end_punct:
+            return cleaned
+
+        last_end = max(cleaned.rfind("."), cleaned.rfind("!"), cleaned.rfind("?"))
+        if last_end > 80:
+            return cleaned[: last_end + 1].strip()
+
+        # If no solid sentence boundary, at least avoid dangling punctuation.
+        return cleaned.rstrip(",;:-").strip()
 
     async def stream(
         self,
