@@ -77,6 +77,7 @@ TIER_MAP = {
 }
 TIER_NAMES = {1: "Search", 2: "Local", 3: "Cloud"}
 TIER_ENERGY = {1: ENERGY_SEARCH_KWH, 2: ENERGY_LOCAL_KWH, 3: ENERGY_FRONTIER_KWH}
+VECTOR_HINT_MIN_CONF = float(os.getenv("VECTOR_HINT_MIN_CONF", "0.70"))
 
 # Auto-escalation: minimum response length to consider "sufficient"
 MIN_RESPONSE_LEN = 10
@@ -174,6 +175,7 @@ class RoutingEngine:
         # State
         self._ready = False
         self._metrics = EngineMetrics()
+        self._embedding_unavailable_logged = False
 
     # ─── Lifecycle ─────────────────────────────
 
@@ -310,6 +312,17 @@ class RoutingEngine:
         initial_tier = TIER_MAP.get(classified, 2)
         reasons.append(f"Classified as {classified}")
 
+        # Optional routing hint from VectorDB history (only if confidence is high)
+        hint = await self._get_vector_routing_hint(query)
+        if hint:
+            hinted_tier, confidence, neighbors = hint
+            if hinted_tier != initial_tier:
+                reasons.append(
+                    f"vector_hint={TIER_NAMES[hinted_tier]} "
+                    f"(conf={confidence:.2f}, k={neighbors})"
+                )
+                initial_tier = hinted_tier
+
         # ── Step 3: Carbon Grid Modifier ───────────
         carbon_status, carbon_modifier = await self._get_carbon_info()
         reasons.append(f"grid={carbon_status}" + (f" ({carbon_modifier:+d})" if carbon_modifier else ""))
@@ -432,6 +445,27 @@ class RoutingEngine:
         status, _ = await self._get_carbon_info()
         return status
 
+    async def _get_vector_routing_hint(self, query: str) -> Optional[tuple[int, float, int]]:
+        """
+        Optional tier hint from VectorDB routing history.
+        Returns (predicted_tier, confidence, neighbors) when confidence is high.
+        """
+        if not self._vector_store:
+            return None
+        try:
+            embedding = await self._get_embedding(query)
+            if not embedding:
+                return None
+            prediction = await self._vector_store.predict_tier(embedding)
+            if not prediction:
+                return None
+            if prediction.confidence < VECTOR_HINT_MIN_CONF:
+                return None
+            return prediction.predicted_tier, prediction.confidence, prediction.num_neighbors
+        except Exception as e:
+            logger.debug("Vector routing hint failed: %s", e)
+            return None
+
     def _apply_mode(
         self,
         tier: int,
@@ -520,6 +554,11 @@ class RoutingEngine:
             embedding = self._embed_model.encode(text).tolist()
             return embedding
         except ImportError:
+            if not self._embedding_unavailable_logged:
+                logger.warning(
+                    "sentence-transformers not installed; semantic cache/routing disabled"
+                )
+                self._embedding_unavailable_logged = True
             logger.debug("sentence-transformers not installed, skipping embeddings")
             return None
         except Exception as e:
