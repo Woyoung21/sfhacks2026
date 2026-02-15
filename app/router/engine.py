@@ -34,9 +34,28 @@ from __future__ import annotations
 import time
 import logging
 import asyncio
+import os
+from pathlib import Path
 from dataclasses import dataclass, field
 from typing import Optional, Literal
 from datetime import datetime, timezone
+
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except Exception:
+    # dotenv is optional; fall back to a minimal .env loader.
+    env_path = Path.cwd() / ".env"
+    if env_path.exists():
+        for raw_line in env_path.read_text(encoding="utf-8").splitlines():
+            line = raw_line.strip()
+            if not line or line.startswith("#") or "=" not in line:
+                continue
+            key, value = line.split("=", 1)
+            key = key.strip()
+            value = value.strip().strip("'\"")
+            if key and key not in os.environ:
+                os.environ[key] = value
 
 logger = logging.getLogger(__name__)
 
@@ -286,6 +305,8 @@ class RoutingEngine:
 
         # ── Step 2: Classify Query ─────────────────
         classified = self._classify(query)
+        classification_detail = self._get_classification_detail(query)
+        complexity_score = self._derive_complexity_score(classification_detail, classified)
         initial_tier = TIER_MAP.get(classified, 2)
         reasons.append(f"Classified as {classified}")
 
@@ -328,7 +349,7 @@ class RoutingEngine:
         self._metrics.total_energy_kwh += energy
 
         # Cache response in VectorDB (fire-and-forget, don't block)
-        asyncio.create_task(self._cache_response(query, response, final_tier))
+        asyncio.create_task(self._cache_response(query, response, final_tier, complexity_score))
 
         result = RouteResult(
             response=response,
@@ -376,6 +397,21 @@ class RoutingEngine:
         except Exception:
             return {}
 
+    def _derive_complexity_score(self, detail: dict, classified: str) -> int:
+        """
+        Derive a 0-100 complexity score for VectorDB routing logs.
+        Uses classifier score spread when available, otherwise tier defaults.
+        """
+        fallback = {"Search": 20, "Local": 55, "Cloud": 85}
+        try:
+            scores = detail.get("scores", {}) if detail else {}
+            if not scores:
+                return fallback.get(classified, 50)
+            score = int(max(scores.values()))
+            return max(0, min(100, score))
+        except Exception:
+            return fallback.get(classified, 50)
+
     async def _get_carbon_info(self) -> tuple[str, int]:
         """
         Get current carbon status and modifier.
@@ -407,37 +443,26 @@ class RoutingEngine:
         Adjust the tier based on mode and carbon.
 
         Eco mode:
-            - Cloud → downgrade to Local (unless grid is clean AND classifier is very confident)
+            - Always avoid Tier 3 (Cloud → Local)
             - Search stays Search
             - Local stays Local
 
         Performance mode:
-            - Trust classifier as-is
-            - Only dirty grid pushes Cloud → Local
+            - Trust classifier unless carbon penalty is non-zero
+            - Medium/dirty penalty can push Cloud → Local
 
         Carbon modifier (from grid.py):
-            - Applied as a "penalty" that makes it harder to stay at Tier 3
             - clean=+0, medium=+8, dirty=+15
+            - Any positive modifier means "prefer local over cloud"
         """
         if mode == "eco":
-            # Eco: aggressively avoid Tier 3
-            if tier == 3:
-                if carbon_status == "clean":
-                    # Clean grid in eco: still downgrade to Local
-                    # (eco means save energy regardless of grid)
-                    return 2
-                else:
-                    # Medium/dirty grid in eco: definitely downgrade
-                    return 2
-            # Eco doesn't affect Tier 1 or 2
-            return tier
+            # Eco always avoids frontier calls regardless of current grid cleanliness.
+            return 2 if tier == 3 else tier
 
-        else:  # performance
-            # Performance: allow Cloud, but carbon can still block it
-            if tier == 3 and carbon_status == "dirty":
-                # Even in perf mode, dirty grid pushes to Local
-                return 2
-            return tier
+        # Performance mode: keep classifier intent except when grid modifier penalizes cloud.
+        if tier == 3 and carbon_modifier > 0:
+            return 2
+        return tier
 
     async def _check_cache(self, query: str) -> Optional[dict]:
         """
@@ -462,7 +487,7 @@ class RoutingEngine:
 
         return None
 
-    async def _cache_response(self, query: str, response: str, tier: int):
+    async def _cache_response(self, query: str, response: str, tier: int, complexity_score: int):
         """Cache the response in VectorDB for future semantic matches."""
         if not self._vector_store:
             return
@@ -471,7 +496,12 @@ class RoutingEngine:
             embedding = await self._get_embedding(query)
             if embedding:
                 await self._vector_store.cache_response(embedding, response, tier)
-                await self._vector_store.log_query(embedding, tier=tier)
+                await self._vector_store.log_query(
+                    embedding,
+                    tier_routed=tier,
+                    complexity_score=complexity_score,
+                    feedback=None,
+                )
         except Exception as e:
             logger.debug("Cache store failed: %s", e)
 
